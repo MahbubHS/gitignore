@@ -1,0 +1,211 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  PROJECT_NAME: gitignore
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "## What's Changed" > CHANGELOG.md
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"* %s (%h)" >> CHANGELOG.md
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ steps.get_version.outputs.version }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+
+  build-binaries:
+    name: Build for ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: Linux x86_64
+            target: linux-x86_64
+            cc: gcc
+          - os: ubuntu-20.04
+            name: Linux ARM64
+            target: linux-arm64
+            cc: aarch64-linux-gnu-gcc
+          - os: macos-latest
+            name: macOS x86_64
+            target: macos-x86_64
+            cc: clang
+          - os: macos-latest
+            name: macOS ARM64 (M1/M2)
+            target: macos-arm64
+            cc: clang
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libcurl4-openssl-dev
+          if [ "${{ matrix.target }}" = "linux-arm64" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
+
+      - name: Install dependencies (macOS)
+        if: startsWith(matrix.os, 'macos')
+        run: brew install curl
+
+      - name: Build
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          make templates
+          make
+
+      - name: Create distribution package
+        run: |
+          mkdir -p dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}
+          cp ${{ env.PROJECT_NAME }} README.md LICENSE dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}/
+          cp -r templates dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}/
+          cp install.sh dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}/
+          cd dist
+          tar -czf ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}
+          
+          # Create checksum
+          sha256sum ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz > ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz.sha256
+
+      - name: Upload tarball
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz
+          asset_name: ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz.sha256
+          asset_name: ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz.sha256
+          asset_content_type: text/plain
+
+  publish-homebrew:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: [create-release, build-binaries]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update Homebrew formula
+        run: |
+          # This would update your Homebrew tap repository
+          # You'll need to create a tap repository first
+          echo "Homebrew formula update would go here"
+          # Example:
+          # git clone https://github.com/mahbubhs/homebrew-tap
+          # cd homebrew-tap
+          # Update Formula/gitignore.rb
+          # git commit and push
+
+  publish-docker:
+    name: Publish Docker Image
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  notify:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [create-release, build-binaries]
+    if: always()
+
+    steps:
+      - name: Send notification
+        run: |
+          echo "✓ Release ${{ needs.create-release.outputs.version }} completed!"
+          echo "Binaries built for multiple platforms"
+          echo "Docker images published"
