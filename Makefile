@@ -3,7 +3,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -std=c11 -I.
 LDFLAGS = -lcurl
-PREFIX = /data/data/org.smartide.code/files/usr
+PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man/man1
 
