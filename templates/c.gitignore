@@ -1,0 +1,7 @@
+# C
+*.o
+*.a
+*.so
+*.out
+*.exe
+*.dylib

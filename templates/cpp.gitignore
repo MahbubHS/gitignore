@@ -1,0 +1,8 @@
+# C++
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dylib

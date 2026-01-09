@@ -1,0 +1,408 @@
+.TH GITIGNORE 1 "January 2026" "gitignore 2.0.0" "User Commands"
+.SH NAME
+gitignore \- professional .gitignore file generator with smart features
+.SH SYNOPSIS
+.B gitignore
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-V\fR|\fB\-\-verbose\fR]
+[\fB\-q\fR|\fB\-\-quiet\fR]
+[\fB\-\-dry\-run\fR]
+.br
+.B gitignore
+[\fB\-i\fR|\fB\-\-init\fR|\fBinit\fR] [\fIlanguages...\fR]
+.br
+.B gitignore
+[\fB\-s\fR|\fB\-\-sync\fR|\fBsync\fR] \fIlanguages...\fR
+.br
+.B gitignore
+[\fB\-l\fR|\fB\-\-list\fR|\fBlist\fR] [\fIfilter\fR] [\fB\-\-local\fR|\fB\-\-builtin\fR]
+.br
+.B gitignore
+[\fBshow\fR|\fBcat\fR] \fItemplate\fR
+.br
+.B gitignore
+[\fBauto\fR|\fB\-\-auto\fR]
+.br
+.B gitignore
+[\fB\-I\fR|\fBinteractive\fR]
+.br
+.B gitignore
+[\fBappend\fR|\fBupdate\fR] \fIlanguages...\fR
+.br
+.B gitignore
+[\fB\-a\fR|\fB\-\-add\fR] \fIpattern\fR
+.br
+.B gitignore
+\fIfile_or_pattern\fR
+.br
+.B gitignore
+\fBglobal\fR [\fBinit\fR|\fBadd\fR \fIlanguages...\fR]
+.br
+.B gitignore
+[\fBbackup\fR|\fBrestore\fR [\fIbackup_name\fR]|\fBbackups\fR|\fBhistory\fR]
+.br
+.B gitignore
+\fBcache clear\fR
+
+.SH DESCRIPTION
+.B gitignore
+is a professional command-line tool that helps you create and manage .gitignore files
+for your projects. It supports multiple programming languages, custom templates,
+auto-detection of project types, and can sync templates directly from GitHub's 
+official gitignore repository.
+
+The tool features smart duplicate removal, template caching, automatic backups,
+interactive mode, global gitignore support, and the ability to add file patterns
+directly to your .gitignore.
+
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Display help information and exit.
+.TP
+.BR \-v ", " \-\-version
+Display version information and feature status.
+.TP
+.BR \-V ", " \-\-verbose
+Enable verbose output with detailed operation information.
+.TP
+.BR \-q ", " \-\-quiet
+Quiet mode - only display errors.
+.TP
+.BR \-\-dry\-run
+Show what would happen without making any changes.
+.TP
+.BR \-i ", " \-\-init ", " init " " [\fIlanguages...\fR]
+Initialize a .gitignore file. If no languages are specified, uses auto.gitignore
+template if it exists, otherwise creates an empty file. If languages are specified,
+merges the corresponding templates.
+.TP
+.BR \-s ", " \-\-sync ", " sync " " \fIlanguages...\fR
+Download and merge templates from GitHub's official gitignore repository.
+Requires internet connection. At least one language must be specified.
+.TP
+.BR \-l ", " \-\-list ", " list " " [\fIfilter\fR] [\fB\-\-local\fR|\fB\-\-builtin\fR]
+List available templates. Optionally filter by keyword. Use --local to show only
+custom templates or --builtin to show only built-in templates.
+.TP
+.BR show ", " cat " " \fItemplate\fR
+Display the contents of a template before using it.
+.TP
+.BR auto ", " \-\-auto
+Auto-detect project type by scanning for configuration files (package.json,
+requirements.txt, Cargo.toml, etc.) and create appropriate .gitignore.
+.TP
+.BR \-I ", " interactive
+Launch interactive mode with a menu to select templates.
+.TP
+.BR append " " \fIlanguages...\fR
+Append templates to existing .gitignore without removing existing content.
+.TP
+.BR update " " \fIlanguages...\fR
+Smart merge templates into existing .gitignore, removing duplicates.
+.TP
+.BR \-a ", " \-\-add " " \fIpattern\fR
+Force add a pattern to .gitignore, even if it matches a template name.
+Useful when the pattern name is ambiguous.
+.TP
+.BR global " " init
+Create a global .gitignore file at ~/.gitignore_global for system-wide patterns.
+.TP
+.BR global " " add " " \fIlanguages...\fR
+Add templates to the global .gitignore file.
+.TP
+.BR backup
+Create a timestamped backup of the current .gitignore file.
+.TP
+.BR restore " " [\fIbackup_name\fR]
+Restore .gitignore from a backup. If no backup name is specified, lists available backups.
+.TP
+.BR backups ", " history
+List all available backup files.
+.TP
+.BR cache " " clear
+Clear the template cache (downloaded templates are cached for 24 hours).
+
+.SH ADDING PATTERNS
+.B gitignore
+can intelligently add file patterns directly to your .gitignore:
+
+.TP
+.B gitignore \fIfile_or_pattern\fR
+Add a file or pattern to .gitignore. The tool automatically detects if the argument
+is a pattern (contains /, ., or *) or a template name.
+
+Examples:
+.br
+  gitignore node_modules/     # Adds the pattern "node_modules/"
+.br
+  gitignore *.log             # Adds the pattern "*.log"
+.br
+  gitignore .env              # Adds the pattern ".env"
+.br
+  gitignore python            # Uses Python template (not a pattern)
+
+.TP
+.B gitignore \-a \fIpattern\fR
+Force add as a pattern when the name is ambiguous. For example, if you want to add
+"rust" as a pattern instead of using the Rust template:
+.br
+  gitignore --add rust        # Adds "rust" as a pattern
+
+.SH CONFIGURATION
+.TP
+.B Custom templates directory:
+$HOME/.config/gitignore/templates/
+.TP
+.B Auto template:
+$HOME/.config/gitignore/templates/auto.gitignore
+.TP
+.B Configuration file:
+$HOME/.config/gitignore/config.conf
+.TP
+.B Cache directory:
+$HOME/.config/gitignore/cache/
+.TP
+.B Backup directory:
+$HOME/.config/gitignore/backups/
+
+Custom templates in the configuration directory take priority over built-in
+templates. The auto.gitignore template is used when running
+.B gitignore init
+without any language arguments.
+
+.SS Configuration File Options
+The config.conf file supports the following options:
+
+.TP
+.B auto_backup=true|false
+Automatically create backups before modifying .gitignore (default: false)
+.TP
+.B cache_enabled=true|false
+Enable template caching for faster operations (default: true)
+.TP
+.B cache_duration=seconds
+Cache duration in seconds (default: 86400 = 24 hours)
+.TP
+.B verbose=true|false
+Enable verbose output by default (default: false)
+.TP
+.B use_color=true|false
+Enable colored terminal output (default: auto-detected)
+
+.SH AUTO-DETECTION
+The auto-detect feature scans the current directory for project files and
+automatically suggests appropriate templates:
+
+.TP
+.B Detected Files and Languages:
+.br
+package.json → node
+.br
+requirements.txt, setup.py, Pipfile → python
+.br
+Cargo.toml → rust
+.br
+go.mod → go
+.br
+pom.xml, build.gradle → java
+.br
+Gemfile → ruby
+.br
+composer.json → php
+.br
+.vscode → vscode
+.br
+.idea → intellij
+.br
+CMakeLists.txt, Makefile → c
+
+The tool also automatically includes OS-specific patterns (macOS, Linux, or Windows).
+
+.SH EXAMPLES
+.SS Basic Usage
+.TP
+.B gitignore init
+Create .gitignore using auto.gitignore or create empty file
+.TP
+.B gitignore init python node
+Create .gitignore with Python and Node.js templates
+.TP
+.B gitignore sync rust c cpp
+Download and merge Rust, C, and C++ templates from GitHub
+.TP
+.B gitignore \-i python vscode
+Create .gitignore with Python and VS Code templates
+
+.SS Advanced Features
+.TP
+.B gitignore auto
+Auto-detect project type and create appropriate .gitignore
+.TP
+.B gitignore interactive
+Launch interactive mode to select templates from a menu
+.TP
+.B gitignore list
+List all available templates (custom and built-in)
+.TP
+.B gitignore list web
+Filter templates containing "web"
+.TP
+.B gitignore show python
+Preview Python template contents
+.TP
+.B gitignore append rust
+Append Rust template to existing .gitignore
+.TP
+.B gitignore update node vscode
+Smart merge Node.js and VS Code templates (removes duplicates)
+
+.SS Adding Patterns
+.TP
+.B gitignore node_modules/
+Add "node_modules/" pattern to .gitignore
+.TP
+.B gitignore *.log
+Add "*.log" pattern to .gitignore
+.TP
+.B gitignore .env
+Add ".env" pattern to .gitignore
+.TP
+.B gitignore --add rust
+Force add "rust" as a pattern (not template)
+
+.SS Global gitignore
+.TP
+.B gitignore global init
+Create global .gitignore at ~/.gitignore_global
+.TP
+.B gitignore global add macos vscode
+Add macOS and VS Code patterns to global .gitignore
+.TP
+.B git config --global core.excludesfile ~/.gitignore_global
+Configure git to use the global .gitignore
+
+.SS Backup and Restore
+.TP
+.B gitignore backup
+Create a timestamped backup of current .gitignore
+.TP
+.B gitignore backups
+List all available backups
+.TP
+.B gitignore restore
+List backups and select one to restore
+.TP
+.B gitignore restore gitignore_20260109_143022.bak
+Restore specific backup
+
+.SS Dry Run
+.TP
+.B gitignore --dry-run init python node
+Preview what would be created without actually creating it
+.TP
+.B gitignore --dry-run auto
+Preview auto-detected templates
+.TP
+.B gitignore --verbose sync rust
+Download Rust template with detailed output
+
+.SH FILES
+.TP
+.I ~/.config/gitignore/templates/*.gitignore
+Custom user templates. These override built-in templates.
+.TP
+.I ~/.config/gitignore/templates/auto.gitignore
+Auto template used with plain 'init' command.
+.TP
+.I ~/.config/gitignore/config.conf
+User configuration file.
+.TP
+.I ~/.config/gitignore/cache/*
+Cached downloaded templates (24-hour TTL by default).
+.TP
+.I ~/.config/gitignore/backups/*
+Backup files created automatically or manually.
+.TP
+.I ~/.gitignore_global
+Global gitignore file for system-wide patterns.
+
+.SH FEATURES
+.TP
+.B Smart Duplicate Removal
+Automatically removes duplicate patterns when merging templates.
+.TP
+.B Template Caching
+Downloaded templates are cached for 24 hours to speed up repeated operations.
+.TP
+.B Automatic Backups
+Optionally create automatic backups before modifying .gitignore.
+.TP
+.B Project Auto-Detection
+Scan project files and suggest appropriate templates.
+.TP
+.B Interactive Mode
+User-friendly menu for selecting templates.
+.TP
+.B Global gitignore Support
+Manage system-wide ignore patterns.
+.TP
+.B Custom Templates
+Create and use your own templates.
+.TP
+.B Colored Output
+Beautiful, informative terminal display with color coding.
+.TP
+.B Progress Indicators
+Visual progress bars for download operations.
+.TP
+.B Pattern Addition
+Directly add file patterns without using templates.
+
+.SH NOTES
+.IP \(bu 2
+Duplicate file patterns are automatically removed when merging templates.
+.IP \(bu 2
+Arguments starting with '#' are treated as comments and ignored.
+.IP \(bu 2
+Custom templates in ~/.config/gitignore/templates/ override built-in templates.
+.IP \(bu 2
+Sync command requires libcurl and internet connection.
+.IP \(bu 2
+Templates are cached for 24 hours by default (configurable).
+.IP \(bu 2
+The tool intelligently distinguishes between patterns and template names.
+.IP \(bu 2
+Use --dry-run to preview any operation without making changes.
+
+.SH ENVIRONMENT
+.TP
+.B HOME
+Used to locate the configuration directory at $HOME/.config/gitignore
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+.TP
+.B 1
+General error (file not found, permission denied, invalid arguments, etc.)
+
+.SH AUTHOR
+Created by gitignore contributors for developers who value clean repositories.
+
+.SH REPORTING BUGS
+Report bugs at: https://github.com/mahbubhs/gitignore/issues
+
+.SH COPYRIGHT
+Copyright © 2026 gitignore contributors. License: MIT
+
+.SH SEE ALSO
+.BR git (1),
+.BR git-config (1),
+.BR gitignore (5)
+
+Full documentation available at: https://github.com/mahbubhs/gitignore
+
+Official gitignore templates: https://github.com/github/gitignore

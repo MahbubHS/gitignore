@@ -1,0 +1,12 @@
+.git
+.github
+*.md
+!README.md
+build/
+dist/
+*.tar.gz
+*.zip
+.DS_Store
+*.log
+.vscode
+.idea
