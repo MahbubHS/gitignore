@@ -1,4 +1,4 @@
-// main.c - Enhanced main with new features
+// main.c - Enhanced main with FIXED pattern handling
 #include "gitignore.h"
 
 config_t *g_config = NULL;
@@ -102,8 +102,9 @@ int parse_flags(int argc, char *argv[]) {
         return auto_detect(dry_run);
     }
     
-    // Interactive mode
-    if (strcmp(flag, "interactive") == 0 || strcmp(flag, "-I") == 0) {
+    // Interactive mode - FIXED: Added -t flag
+    if (strcmp(flag, "interactive") == 0 || strcmp(flag, "--interactive") == 0 || 
+        strcmp(flag, "-I") == 0 || strcmp(flag, "-t") == 0) {
         return interactive_mode();
     }
     
@@ -151,13 +152,14 @@ int parse_flags(int argc, char *argv[]) {
         }
     }
     
-    // Add pattern to gitignore (new feature #26)
+    // FIXED: --add flag now only for conflicting names
     if (strcmp(flag, "-a") == 0 || strcmp(flag, "--add") == 0) {
         if (argc < 3) {
-            print_error("--add requires a file path or pattern", ERR_INVALID_ARGUMENT);
+            print_error("--add requires at least one pattern", ERR_INVALID_ARGUMENT);
             return 1;
         }
-        return add_pattern(argv[2], dry_run);
+        // Add all remaining arguments as patterns (multiple patterns support)
+        return add_patterns(&argv[2], argc - 2, dry_run);
     }
     
     // Init flag
@@ -189,14 +191,35 @@ int parse_flags(int argc, char *argv[]) {
         return sync_gitignore(&argv[2], argc - 2, dry_run);
     }
     
-    // Default: treat as pattern to add (feature #26)
-    // Check if it looks like a path/pattern vs a language name
-    if (is_path_or_pattern(flag)) {
-        return add_pattern(flag, dry_run);
+    // FIXED: Default behavior - check if it's a command name
+    // If first arg is a command name, user must use --add to add it as pattern
+    if (is_command_name(flag)) {
+        print_error("Ambiguous argument - did you mean a command or pattern?", ERR_INVALID_ARGUMENT);
+        printf("\nIf you want to use the '%s' command, check: gitignore --help\n", flag);
+        printf("If you want to add '%s' as a pattern, use: gitignore --add %s\n", flag, flag);
+        return 1;
     }
     
-    print_error("Unknown command. Use -h for help", ERR_INVALID_ARGUMENT);
-    return 1;
+    // FIXED: Treat all remaining args as patterns (supports multiple patterns)
+    // gitignore node_modules/ *.log .env
+    return add_patterns(&argv[1], argc - 1, dry_run);
+}
+
+// FIXED: Check if name conflicts with a command
+int is_command_name(const char *name) {
+    const char *commands[] = {
+        "init", "sync", "list", "show", "cat", "auto", "interactive",
+        "append", "update", "global", "backup", "restore", "backups",
+        "history", "cache", NULL
+    };
+    
+    for (int i = 0; commands[i] != NULL; i++) {
+        if (strcmp(name, commands[i]) == 0) {
+            return 1;
+        }
+    }
+    
+    return 0;
 }
 
 // Helper to determine if string is a path/pattern vs language name

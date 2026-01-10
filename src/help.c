@@ -1,4 +1,4 @@
-// help.c - Enhanced help with all new features
+// help.c - FIXED help with corrected usage
 #include "gitignore.h"
 
 void show_help(void) {
@@ -7,7 +7,7 @@ void show_help(void) {
     
     printf("%sUSAGE:%s\n", COLOR_BOLD, COLOR_RESET);
     printf("  gitignore [FLAGS] [OPTIONS] [ARGS]\n");
-    printf("  gitignore <file/path>              # Add pattern to .gitignore\n\n");
+    printf("  gitignore <pattern...>             # Add one or more patterns to .gitignore\n\n");
     
     printf("%sFLAGS:%s\n", COLOR_BOLD, COLOR_RESET);
     printf("  %s-h, --help%s          Show this help message\n", COLOR_GREEN, COLOR_RESET);
@@ -15,8 +15,8 @@ void show_help(void) {
     printf("  %s-i, --init, init%s    Initialize .gitignore file\n", COLOR_GREEN, COLOR_RESET);
     printf("  %s-s, --sync, sync%s    Sync .gitignore from GitHub repository\n", COLOR_GREEN, COLOR_RESET);
     printf("  %s-l, --list, list%s    List available templates\n", COLOR_GREEN, COLOR_RESET);
-    printf("  %s-a, --add%s           Force add pattern (resolve ambiguity)\n", COLOR_GREEN, COLOR_RESET);
-    printf("  %s-I, interactive%s     Interactive template selection\n", COLOR_GREEN, COLOR_RESET);
+    printf("  %s-a, --add%s           Force add as pattern (when name conflicts with command)\n", COLOR_GREEN, COLOR_RESET);
+    printf("  %s-t, -I, interactive%s Interactive template selection\n", COLOR_GREEN, COLOR_RESET);
     printf("  %s-V, --verbose%s       Verbose output\n", COLOR_GREEN, COLOR_RESET);
     printf("  %s-q, --quiet%s         Quiet mode (errors only)\n", COLOR_GREEN, COLOR_RESET);
     printf("  %s--dry-run%s           Show what would happen without doing it\n\n", COLOR_GREEN, COLOR_RESET);
@@ -36,7 +36,7 @@ void show_help(void) {
            COLOR_YELLOW, COLOR_RESET);
     printf("  %sauto%s                         Auto-detect project and create .gitignore\n", 
            COLOR_YELLOW, COLOR_RESET);
-    printf("  %sinteractive%s                  Interactive template selection mode\n\n", 
+    printf("  %sinteractive, -t, -I%s          Interactive template selection mode\n\n", 
            COLOR_YELLOW, COLOR_RESET);
     
     printf("%sGLOBAL COMMANDS:%s\n", COLOR_BOLD, COLOR_RESET);
@@ -71,15 +71,22 @@ void show_help(void) {
     printf("  gitignore auto\n\n");
     
     printf("  %s# Interactive mode%s\n", COLOR_CYAN, COLOR_RESET);
-    printf("  gitignore interactive\n\n");
+    printf("  gitignore interactive\n");
+    printf("  gitignore -t              # Short form\n");
+    printf("  gitignore -I              # Alternative short form\n\n");
     
-    printf("  %s# Add file/path pattern%s\n", COLOR_CYAN, COLOR_RESET);
+    printf("  %s# Add single file/path pattern%s\n", COLOR_CYAN, COLOR_RESET);
     printf("  gitignore node_modules/\n");
     printf("  gitignore *.log\n");
     printf("  gitignore .env\n\n");
     
-    printf("  %s# Force add when ambiguous%s\n", COLOR_CYAN, COLOR_RESET);
-    printf("  gitignore --add rust        # Adds 'rust' as pattern, not template\n\n");
+    printf("  %s# Add MULTIPLE patterns at once%s\n", COLOR_CYAN, COLOR_RESET);
+    printf("  gitignore node_modules/ *.log .env dist/\n");
+    printf("  gitignore *.tmp *.swp *~\n\n");
+    
+    printf("  %s# Force add when name conflicts with command%s\n", COLOR_CYAN, COLOR_RESET);
+    printf("  gitignore --add init      # Adds 'init' as pattern, not command\n");
+    printf("  gitignore --add sync list # Adds both as patterns\n\n");
     
     printf("  %s# Append to existing .gitignore%s\n", COLOR_CYAN, COLOR_RESET);
     printf("  gitignore append python\n\n");
@@ -99,6 +106,18 @@ void show_help(void) {
     printf("  %s# Dry run%s\n", COLOR_CYAN, COLOR_RESET);
     printf("  gitignore --dry-run init python node\n\n");
     
+    printf("%sADDING PATTERNS:%s\n", COLOR_BOLD, COLOR_RESET);
+    printf("  By default, any argument that looks like a file/path is treated as a pattern:\n");
+    printf("    • Contains %s/%s (slash) → pattern\n", COLOR_YELLOW, COLOR_RESET);
+    printf("    • Contains %s.%s (dot)   → pattern\n", COLOR_YELLOW, COLOR_RESET);
+    printf("    • Contains %s*%s (star)  → pattern\n", COLOR_YELLOW, COLOR_RESET);
+    printf("    • File/dir exists     → pattern\n\n");
+    
+    printf("  Use %s--add%s when pattern name conflicts with a command:\n", COLOR_YELLOW, COLOR_RESET);
+    printf("    gitignore --add init    # 'init' as pattern\n");
+    printf("    gitignore --add sync    # 'sync' as pattern\n");
+    printf("    gitignore --add list    # 'list' as pattern\n\n");
+    
     printf("%sCONFIGURATION:%s\n", COLOR_BOLD, COLOR_RESET);
     printf("  Custom templates:  %s$HOME/.config/gitignore/templates/%s\n", 
            COLOR_MAGENTA, COLOR_RESET);
@@ -113,6 +132,7 @@ void show_help(void) {
     
     printf("%sFEATURES:%s\n", COLOR_BOLD, COLOR_RESET);
     printf("  • Smart duplicate removal\n");
+    printf("  • Multiple patterns support\n");
     printf("  • Template caching (24h)\n");
     printf("  • Automatic backups\n");
     printf("  • Project auto-detection\n");
@@ -122,7 +142,7 @@ void show_help(void) {
     printf("  • Colored output\n");
     printf("  • Progress indicators\n\n");
     
-    printf("For more information: %shttps://github.com/mahbubhs/gitignore%s\n", 
+    printf("For more information: %shttps://github.com/yourusername/gitignore%s\n", 
            COLOR_BLUE, COLOR_RESET);
 }
 

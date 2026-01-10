@@ -48,7 +48,7 @@ for template_file in "$TEMPLATE_DIR"/*.gitignore; do
         
         # Generate C string variable
         echo "// $template_name template" >> "$OUTPUT_FILE"
-        echo "static const char *${template_name}_template = " >> "$OUTPUT_FILE"
+        echo "static const char ${template_name}_template[] = " >> "$OUTPUT_FILE"
         
         # Read file line by line and convert to C string
         while IFS= read -r line || [ -n "$line" ]; do

@@ -1,4 +1,4 @@
-// gitignore.h - Complete header with built-in templates
+// gitignore.h - Enhanced header file (FIXED)
 #ifndef GITIGNORE_H
 #define GITIGNORE_H
 
@@ -71,48 +71,34 @@ typedef struct {
     int use_color;
 } config_t;
 
-// Function declarations - Core
+// Function declarations
 void show_help(void);
 void show_version(void);
 int parse_flags(int argc, char *argv[]);
-
-// Function declarations - Main features
 int init_gitignore(char **langs, int count, int dry_run);
 int sync_gitignore(char **langs, int count, int dry_run);
 int list_templates(const char *filter, int show_local, int show_builtin);
 int show_template(const char *lang);
 int append_gitignore(char **langs, int count, merge_strategy_t strategy, int dry_run);
+
+// FIXED: Changed from add_pattern to add_patterns for multiple support
 int add_patterns(char **patterns, int count, int dry_run);
+
 int auto_detect(int dry_run);
 int interactive_mode(void);
-
-// Function declarations - Global gitignore
 int global_init(void);
 int global_add(char **langs, int count);
-
-// Function declarations - Backup & Restore
 int backup_gitignore(void);
 int restore_gitignore(const char *backup_name);
 int list_backups(void);
-
-// Function declarations - Cache
 int init_cache(void);
 int get_cached_template(const char *lang, char **content);
 int cache_template(const char *lang, const char *content);
 int clear_cache(void);
-
-// Function declarations - Config
 config_t* load_config(void);
 void free_config(config_t *config);
 int save_config(config_t *config);
 void apply_config(config_t *config);
-
-// Function declarations - Built-in templates
-const char* get_builtin_template(const char *name);
-int is_builtin_template(const char *name);
-const char** get_builtin_template_names(void);
-
-// Helper functions
 char* get_config_path(void);
 char* get_cache_path(void);
 char* get_backup_path(void);
@@ -131,11 +117,10 @@ void print_progress(const char *task, int current, int total);
 int detect_project_type(char ***langs, int *count);
 int is_language_name(const char *name);
 int is_path_or_pattern(const char *name);
+// Add this near the top of the file, after other #includes
+const char* get_builtin_template(const char *name);
+// FIXED: New function to check if name is a command
 int is_command_name(const char *name);
-
-// NEW: Duplicate removal and merging
-char** remove_duplicate_patterns(char **patterns, int *count);
-int pattern_exists_in_file(const char *pattern);
 
 extern config_t *g_config;
 

@@ -1,4 +1,4 @@
-// features.c - FIXED with pattern deduplication
+// features.c - FIXED with multiple patterns support
 #include "gitignore.h"
 
 // List available templates
@@ -23,7 +23,7 @@ int list_templates(const char *filter, int show_local, int show_builtin) {
                         if (dot) *dot = '\0';
                         
                         if (!filter || strstr(name, filter)) {
-                            printf("  %s•%s %s%s%s (custom)\n", COLOR_GREEN, COLOR_RESET, 
+                            printf("  %s•%s %s%s%s\n", COLOR_GREEN, COLOR_RESET, 
                                    COLOR_BOLD, name, COLOR_RESET);
                             count++;
                         }
@@ -40,7 +40,13 @@ int list_templates(const char *filter, int show_local, int show_builtin) {
     if (show_builtin) {
         printf("\n%s%sBuilt-in Templates:%s\n", COLOR_BOLD, COLOR_YELLOW, COLOR_RESET);
         
-        const char **builtins = get_builtin_template_names();
+        const char *builtins[] = {
+            "python", "node", "rust", "c", "cpp", "java", "go", 
+            "ruby", "php", "swift", "kotlin", "typescript",
+            "vscode", "vim", "intellij", "macos", "linux", "windows",
+            NULL
+        };
+        
         for (int i = 0; builtins[i] != NULL; i++) {
             if (!filter || strstr(builtins[i], filter)) {
                 printf("  %s•%s %s\n", COLOR_GREEN, COLOR_RESET, builtins[i]);
@@ -57,19 +63,19 @@ int list_templates(const char *filter, int show_local, int show_builtin) {
 int show_template(const char *lang) {
     char *template_path = get_template_path(lang);
     FILE *f = NULL;
-    const char *builtin_content = NULL;
     
-    // Check custom first
     if (template_path && file_exists(template_path)) {
         f = fopen(template_path, "r");
     }
     
-    // Check built-in
     if (!f) {
-        builtin_content = get_builtin_template(lang);
+        // Try built-in
+        char builtin_path[MAX_PATH_LEN];
+        snprintf(builtin_path, sizeof(builtin_path), "templates/%s.gitignore", lang);
+        f = fopen(builtin_path, "r");
     }
     
-    if (!f && !builtin_content) {
+    if (!f) {
         print_error("Template not found", ERR_FILE_NOT_FOUND);
         if (template_path) free(template_path);
         return 1;
@@ -77,16 +83,12 @@ int show_template(const char *lang) {
     
     printf("%s%s=== %s ===%s\n", COLOR_BOLD, COLOR_CYAN, lang, COLOR_RESET);
     
-    if (f) {
-        char line[MAX_LINE_LEN];
-        while (fgets(line, sizeof(line), f)) {
-            printf("%s", line);
-        }
-        fclose(f);
-    } else {
-        printf("%s", builtin_content);
+    char line[MAX_LINE_LEN];
+    while (fgets(line, sizeof(line), f)) {
+        printf("%s", line);
     }
     
+    fclose(f);
     if (template_path) free(template_path);
     return 0;
 }
@@ -186,7 +188,7 @@ int detect_project_type(char ***langs, int *count) {
     return 0;
 }
 
-// FIXED: Add multiple patterns with deduplication
+// FIXED: Add multiple patterns to .gitignore
 int add_patterns(char **patterns, int count, int dry_run) {
     if (!patterns || count == 0) {
         print_error("No patterns provided", ERR_INVALID_ARGUMENT);
@@ -203,47 +205,20 @@ int add_patterns(char **patterns, int count, int dry_run) {
         return 0;
     }
     
-    // Read existing patterns
-    char **existing_patterns = NULL;
-    int existing_count = 0;
-    
-    if (file_exists(".gitignore")) {
-        FILE *f = fopen(".gitignore", "r");
-        if (f) {
-            existing_patterns = malloc(sizeof(char*) * 10000);
-            char line[MAX_LINE_LEN];
-            
-            while (fgets(line, sizeof(line), f)) {
-                if (!is_comment(line) && strlen(line) > 1) {
-                    line[strcspn(line, "\n\r")] = 0;
-                    char *trimmed = line;
-                    while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
-                    
-                    if (strlen(trimmed) > 0) {
-                        existing_patterns[existing_count++] = strdup(trimmed);
-                    }
-                }
-            }
-            fclose(f);
-        }
-    }
+    // Check if .gitignore exists
+    FILE *f = fopen(".gitignore", "r");
+    int exists = (f != NULL);
+    if (f) fclose(f);
     
     // Open for appending
-    FILE *f = fopen(".gitignore", "a");
+    f = fopen(".gitignore", "a");
     if (!f) {
         print_error("Could not open .gitignore for writing", ERR_PERMISSION_DENIED);
-        
-        if (existing_patterns) {
-            for (int i = 0; i < existing_count; i++) {
-                free(existing_patterns[i]);
-            }
-            free(existing_patterns);
-        }
         return 1;
     }
     
-    // Check if we need newline before adding
-    if (existing_count > 0) {
+    // Add newline if file exists and doesn't end with one
+    if (exists) {
         fseek(f, -1, SEEK_END);
         char last_char = fgetc(f);
         if (last_char != '\n') {
@@ -254,73 +229,23 @@ int add_patterns(char **patterns, int count, int dry_run) {
     // Add comment header for multiple patterns
     if (count > 1) {
         fprintf(f, "\n# Added by gitignore tool\n");
-    } else if (count == 1 && existing_count > 0) {
-        fprintf(f, "\n");
     }
     
-    // Add patterns (skipping duplicates)
-    int added_count = 0;
+    // Add all patterns
     for (int i = 0; i < count; i++) {
-        // Check if pattern already exists
-        int is_duplicate = 0;
-        for (int j = 0; j < existing_count; j++) {
-            if (strcmp(patterns[i], existing_patterns[j]) == 0) {
-                is_duplicate = 1;
-                if (g_config && g_config->verbose) {
-                    printf("  %sSkipping duplicate:%s %s\n", 
-                           COLOR_YELLOW, COLOR_RESET, patterns[i]);
-                }
-                break;
-            }
-        }
-        
-        if (!is_duplicate) {
-            fprintf(f, "%s\n", patterns[i]);
-            added_count++;
-        }
+        fprintf(f, "%s\n", patterns[i]);
     }
     
     fclose(f);
     
-    // Free existing patterns
-    if (existing_patterns) {
-        for (int i = 0; i < existing_count; i++) {
-            free(existing_patterns[i]);
-        }
-        free(existing_patterns);
-    }
-    
     // Print success message
-    if (added_count == 0) {
-        print_warning("All patterns already exist in .gitignore");
-    } else if (added_count == 1) {
+    if (count == 1) {
         print_success("Pattern added to .gitignore");
-        for (int i = 0; i < count; i++) {
-            int is_dup = 0;
-            for (int j = 0; j < existing_count; j++) {
-                if (strcmp(patterns[i], existing_patterns[j]) == 0) {
-                    is_dup = 1;
-                    break;
-                }
-            }
-            if (!is_dup) {
-                printf("  %s+%s %s\n", COLOR_GREEN, COLOR_RESET, patterns[i]);
-            }
-        }
+        printf("  %s+%s %s\n", COLOR_GREEN, COLOR_RESET, patterns[0]);
     } else {
         print_success("Patterns added to .gitignore");
-        printf("  %sAdded: %d pattern(s)%s\n", COLOR_BOLD, added_count, COLOR_RESET);
         for (int i = 0; i < count; i++) {
-            int is_dup = 0;
-            for (int j = 0; j < existing_count; j++) {
-                if (strcmp(patterns[i], existing_patterns[j]) == 0) {
-                    is_dup = 1;
-                    break;
-                }
-            }
-            if (!is_dup) {
-                printf("  %s+%s %s\n", COLOR_GREEN, COLOR_RESET, patterns[i]);
-            }
+            printf("  %s+%s %s\n", COLOR_GREEN, COLOR_RESET, patterns[i]);
         }
     }
     
@@ -332,7 +257,10 @@ int interactive_mode(void) {
     printf("%s%s=== Interactive Mode ===%s\n\n", COLOR_BOLD, COLOR_CYAN, COLOR_RESET);
     printf("Available templates:\n\n");
     
-    const char **templates = get_builtin_template_names();
+    const char *templates[] = {
+        "python", "node", "rust", "c", "cpp", "java", "go",
+        "vscode", "vim", "macos", "linux", "windows", NULL
+    };
     
     char *selected[MAX_LANGS];
     int count = 0;
@@ -349,7 +277,7 @@ int interactive_mode(void) {
         while (token != NULL) {
             int idx = atoi(token);
             if (idx == 0) break;
-            if (idx > 0 && idx <= 50 && templates[idx - 1] != NULL) {
+            if (idx > 0 && idx <= 20 && templates[idx - 1] != NULL) {
                 selected[count++] = (char*)templates[idx - 1];
             }
             token = strtok(NULL, " \n");
@@ -367,7 +295,7 @@ int interactive_mode(void) {
                i < count - 1 ? ", " : "\n");
     }
     
-    printf("\nCreate/update .gitignore? (y/n): ");
+    printf("\nCreate .gitignore? (y/n): ");
     char confirm[10];
     if (fgets(confirm, sizeof(confirm), stdin)) {
         if (confirm[0] == 'y' || confirm[0] == 'Y') {
