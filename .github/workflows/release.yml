@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 env:
   PROJECT_NAME: gitignore
@@ -13,18 +13,13 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
+      version: ${{ github.ref_name#v }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Get version from tag
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Generate changelog
         id: changelog
@@ -33,13 +28,10 @@ jobs:
           git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"* %s (%h)" >> CHANGELOG.md
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.get_version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name#v }}
           body_path: CHANGELOG.md
           draft: false
           prerelease: false
@@ -100,29 +92,19 @@ jobs:
           cp install.sh dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}/
           cd dist
           tar -czf ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}
-          
+
           # Create checksum
           sha256sum ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz > ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz.sha256
 
       - name: Upload tarball
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz
-          asset_name: ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz
-          asset_content_type: application/gzip
+        run: |
+          version=${{ github.ref_name#v }}
+          gh release upload ${{ github.ref_name }} ./dist/${{ env.PROJECT_NAME }}-${version}-${{ matrix.target }}.tar.gz
 
       - name: Upload checksum
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./dist/${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz.sha256
-          asset_name: ${{ env.PROJECT_NAME }}-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz.sha256
-          asset_content_type: text/plain
+        run: |
+          version=${{ github.ref_name#v }}
+          gh release upload ${{ github.ref_name }} ./dist/${{ env.PROJECT_NAME }}-${version}-${{ matrix.target }}.tar.gz.sha256
 
   publish-homebrew:
     name: Update Homebrew Formula

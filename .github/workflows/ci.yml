@@ -2,11 +2,11 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   release:
-    types: [ created ]
+    types: [created]
 
 env:
   PROJECT_NAME: gitignore
@@ -111,7 +111,7 @@ jobs:
       - name: Test - Init empty
         run: |
           cd /tmp
-          ./$(pwd)/gitignore init
+          /workspaces/gitignore/gitignore init
           [ -f .gitignore ] && echo "✓ Empty init works"
 
       - name: Test - Auto detect
@@ -119,7 +119,7 @@ jobs:
           cd /tmp
           rm -f .gitignore
           echo '{}' > package.json
-          ./$(pwd)/gitignore auto
+          /workspaces/gitignore/gitignore auto
           [ -f .gitignore ] && echo "✓ Auto detect works"
           grep -q "node" .gitignore && echo "✓ Node.js detected"
 
@@ -130,7 +130,7 @@ jobs:
         run: |
           cd /tmp
           rm -f .gitignore
-          ./$(pwd)/gitignore node_modules/
+          /workspaces/gitignore/gitignore node_modules/
           [ -f .gitignore ] && echo "✓ Add pattern works"
           grep -q "node_modules/" .gitignore && echo "✓ Pattern added"
 
@@ -144,16 +144,16 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
   release:
     name: Create Release
@@ -164,6 +164,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Get version
+        run: echo "VERSION=${{ github.event.release.tag_name#v }}" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: |
@@ -184,14 +187,7 @@ jobs:
           tar -czf gitignore-${{ env.VERSION }}-linux-x86_64.tar.gz gitignore-${{ env.VERSION }}
 
       - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./dist/gitignore-${{ env.VERSION }}-linux-x86_64.tar.gz
-          asset_name: gitignore-${{ env.VERSION }}-linux-x86_64.tar.gz
-          asset_content_type: application/gzip
+        run: gh release upload ${{ github.event.release.tag_name }} ./dist/gitignore-${{ env.VERSION }}-linux-x86_64.tar.gz
 
   docker:
     name: Build Docker Image
