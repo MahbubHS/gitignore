@@ -13,6 +13,21 @@
 #include <dirent.h>
 #include <time.h>
 
+// Include strings.h for strcasecmp on systems where it's needed
+#ifdef __linux__
+#include <strings.h>
+#endif
+
+// Ensure strdup is available (POSIX function)
+#ifndef strdup
+char *strdup(const char *s);
+#endif
+
+// Ensure strcasecmp is available
+#ifndef strcasecmp
+int strcasecmp(const char *s1, const char *s2);
+#endif
+
 #define VERSION "2.0.0"
 #define MAX_LANGS 100
 #define MAX_PATH_LEN 512

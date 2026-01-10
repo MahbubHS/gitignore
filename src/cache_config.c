@@ -49,16 +49,27 @@ int get_cached_template(const char *lang, char **content) {
     if (!f) return 1;
     
     fseek(f, 0, SEEK_END);
-    long size = ftell(f);
+    long file_size = ftell(f);
     fseek(f, 0, SEEK_SET);
     
+    if (file_size < 0) {
+        fclose(f);
+        return 1;
+    }
+    
+    size_t size = (size_t)file_size;
     *content = malloc(size + 1);
     if (!*content) {
         fclose(f);
         return 1;
     }
     
-    fread(*content, 1, size, f);
+    size_t bytes_read = fread(*content, 1, size, f);
+    if (bytes_read != size) {
+        free(*content);
+        fclose(f);
+        return 1;
+    }
     (*content)[size] = '\0';
     fclose(f);
     
