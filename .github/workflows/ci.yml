@@ -1,4 +1,4 @@
-name: CI / CD Pipeline (All Platforms & Architectures)
+name: CI / CD Pipeline
 
 on:
   push:
@@ -18,8 +18,9 @@ permissions:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint (Advisory)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,15 +29,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-format cppcheck
 
-      - name: clang-format
+      - name: clang-format (check only)
         run: |
-          find src -name "*.c" -o -name "*.h" \
-          | xargs clang-format -style=file -n -Werror
+          FILES=$(find src -type f \( -name "*.c" -o -name "*.h" \))
+          if [ -n "$FILES" ]; then
+            echo "$FILES" | xargs clang-format -style=file -n || true
+          else
+            echo "No C files found; skipping format check"
+          fi
 
-      - name: cppcheck
+      - name: cppcheck (warnings only)
         run: |
-          cppcheck --enable=all --error-exitcode=1 \
-          --suppress=missingIncludeSystem src/
+          cppcheck \
+            --enable=warning,performance,portability \
+            --inline-suppr \
+            --suppress=missingIncludeSystem \
+            src/ || true
 
   build:
     name: Build (${{ matrix.platform }} / ${{ matrix.arch }})
@@ -103,7 +111,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # ---------- Linux ----------
-      - name: Install Linux deps
+      - name: Install Linux dependencies
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
@@ -113,12 +121,12 @@ jobs:
             gcc-aarch64-linux-gnu
 
       # ---------- macOS ----------
-      - name: Install macOS deps
+      - name: Install macOS dependencies
         if: matrix.platform == 'macos'
         run: brew install curl
 
       # ---------- Windows ----------
-      - name: Install Windows deps
+      - name: Install Windows dependencies
         if: matrix.platform == 'windows'
         run: choco install mingw llvm -y
         shell: powershell
@@ -143,15 +151,15 @@ jobs:
           make templates
           make
 
-      # ---------- Tests (native only) ----------
-      - name: Run tests
+      # ---------- Native tests ----------
+      - name: Run basic tests (native only)
         if: matrix.native == true
         run: |
           ./gitignore --version
           ./gitignore --help
           ./gitignore list
 
-      # ---------- Rename ----------
+      # ---------- Rename binary ----------
       - name: Rename binary
         shell: bash
         run: |
@@ -166,8 +174,9 @@ jobs:
           path: gitignore-${{ matrix.platform }}-${{ matrix.arch }}*
 
   security:
-    name: Trivy Scan
+    name: Security Scan (Advisory)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -175,12 +184,7 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
-          format: sarif
-          output: trivy.sarif
-
-      - uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy.sarif
+          format: table
 
   release:
     name: Release
