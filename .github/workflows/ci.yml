@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   lint:
-    name: Lint (C)
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -126,7 +126,7 @@ jobs:
       # ---------- Android ----------
       - name: Setup Android SDK
         if: matrix.platform == 'android'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v2
 
       - name: Install Android NDK
         if: matrix.platform == 'android'
@@ -143,15 +143,15 @@ jobs:
           make templates
           make
 
-      # ---------- Native tests ----------
-      - name: Run tests (native only)
+      # ---------- Tests (native only) ----------
+      - name: Run tests
         if: matrix.native == true
         run: |
           ./gitignore --version
           ./gitignore --help
           ./gitignore list
 
-      # ---------- Rename binary ----------
+      # ---------- Rename ----------
       - name: Rename binary
         shell: bash
         run: |
@@ -166,12 +166,12 @@ jobs:
           path: gitignore-${{ matrix.platform }}-${{ matrix.arch }}*
 
   security:
-    name: Security Scan (Trivy)
+    name: Trivy Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: aquasecurity/trivy-action@v0.20.1
+      - uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
@@ -191,10 +191,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
 
-      - name: Upload assets
+      - name: Upload release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
