@@ -1,4 +1,4 @@
-// gitignore.h - Enhanced header file
+// gitignore.h - Complete header with built-in templates
 #ifndef GITIGNORE_H
 #define GITIGNORE_H
 
@@ -17,7 +17,7 @@
 #define MAX_LANGS 100
 #define MAX_PATH_LEN 512
 #define MAX_LINE_LEN 1024
-#define CACHE_DURATION 86400  // 24 hours
+#define CACHE_DURATION 86400
 #define GITHUB_RAW_URL "https://raw.githubusercontent.com/github/gitignore/main/"
 
 // ANSI Color codes
@@ -71,19 +71,6 @@ typedef struct {
     int use_color;
 } config_t;
 
-// Template cache entry
-typedef struct {
-    char *name;
-    char *content;
-    time_t timestamp;
-} cache_entry_t;
-
-// Remote source
-typedef struct {
-    char *name;
-    char *url;
-} remote_source_t;
-
 // Function declarations - Core
 void show_help(void);
 void show_version(void);
@@ -95,7 +82,7 @@ int sync_gitignore(char **langs, int count, int dry_run);
 int list_templates(const char *filter, int show_local, int show_builtin);
 int show_template(const char *lang);
 int append_gitignore(char **langs, int count, merge_strategy_t strategy, int dry_run);
-int add_pattern(const char *pattern, int dry_run);
+int add_patterns(char **patterns, int count, int dry_run);
 int auto_detect(int dry_run);
 int interactive_mode(void);
 
@@ -113,7 +100,6 @@ int init_cache(void);
 int get_cached_template(const char *lang, char **content);
 int cache_template(const char *lang, const char *content);
 int clear_cache(void);
-int is_cache_valid(const char *lang);
 
 // Function declarations - Config
 config_t* load_config(void);
@@ -121,10 +107,10 @@ void free_config(config_t *config);
 int save_config(config_t *config);
 void apply_config(config_t *config);
 
-// Function declarations - Remote sources
-int add_remote_source(const char *name, const char *url);
-int list_remote_sources(void);
-int remove_remote_source(const char *name);
+// Function declarations - Built-in templates
+const char* get_builtin_template(const char *name);
+int is_builtin_template(const char *name);
+const char** get_builtin_template_names(void);
 
 // Helper functions
 char* get_config_path(void);
@@ -142,17 +128,15 @@ void print_success(const char *msg);
 void print_warning(const char *msg);
 void print_info(const char *msg);
 void print_progress(const char *task, int current, int total);
-
-// Detection helpers
 int detect_project_type(char ***langs, int *count);
 int is_language_name(const char *name);
 int is_path_or_pattern(const char *name);
+int is_command_name(const char *name);
 
-// Built-in templates
-extern const char *builtin_templates[];
-extern const int builtin_count;
+// NEW: Duplicate removal and merging
+char** remove_duplicate_patterns(char **patterns, int *count);
+int pattern_exists_in_file(const char *pattern);
 
-// Global config
 extern config_t *g_config;
 
-#endif // GITIGNORE_H
+#endif

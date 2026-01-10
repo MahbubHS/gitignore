@@ -54,3 +54,4 @@ dkms.conf
 # debug information files
 *.dwo
 .si.json
+commit.txt

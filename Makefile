@@ -1,157 +1,126 @@
-# Makefile for gitignore tool v2.0
+# Makefile for gitignore tool v2.0 - SMART VERSION
 
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -std=c11 -I.
 LDFLAGS = -lcurl
-PREFIX = /usr/local
+
+# Smart PREFIX detection from environment or default
+PREFIX ?= /usr/local
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man/man1
 
 TARGET = gitignore
 SRCDIR = src
-SOURCES = main.c help.c init.c sync.c utils.c features.c global_backup.c cache_config.c
+SOURCES = main.c help.c init.c sync.c utils.c features.c global_backup.c cache_config.c templates.c
 OBJECTS = $(SOURCES:%.c=$(SRCDIR)/%.o)
 HEADERS = gitignore.h
 
-# Template files to embed
 TEMPLATE_DIR = templates
-TEMPLATES = $(wildcard $(TEMPLATE_DIR)/*.gitignore)
+TEMPLATE_GEN = scripts/generate_templates.sh
 
-.PHONY: all clean install uninstall templates dirs test package
+VERSION = 2.0.0
 
-all: dirs $(TARGET)
+.PHONY: all clean install uninstall dirs test package templates help
+
+all: templates dirs $(TARGET)
+
+# Show detected PREFIX
+show-prefix:
+	@echo "Installation prefix: $(PREFIX)"
+	@echo "Binary will be installed to: $(BINDIR)"
+	@echo "Man page will be installed to: $(MANDIR)"
+	@echo ""
+	@echo "To change prefix, use: make PREFIX=/your/path install"
+	@echo "Or set environment: export PREFIX=/your/path"
 
 dirs:
-	@mkdir -p $(SRCDIR) $(TEMPLATE_DIR) man
+	@mkdir -p $(SRCDIR) man scripts
+
+# Generate templates.c from templates/ directory
+templates: $(TEMPLATE_DIR)/*.gitignore $(TEMPLATE_GEN)
+	@echo "Generating templates.c from templates/ directory..."
+	@chmod +x $(TEMPLATE_GEN)
+	@$(TEMPLATE_GEN)
+
+# If template generator doesn't exist, create it
+$(TEMPLATE_GEN):
+	@echo "Creating template generator script..."
+	@mkdir -p scripts
+	@echo "Template generator not found. Please ensure scripts/generate_templates.sh exists"
 
 $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
 	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "✓ Build complete: $(TARGET)"
-	@echo "  Install with: sudo make install"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+	@echo "Installation prefix: $(PREFIX)"
+	@echo "  Binary: $(BINDIR)/$(TARGET)"
+	@echo "  Man page: $(MANDIR)/gitignore.1"
+	@echo ""
+	@echo "Install with: make install"
+	@echo "Or with custom prefix: make PREFIX=/your/path install"
+	@echo ""
 
 $(SRCDIR)/%.o: $(SRCDIR)/%.c $(HEADERS)
+	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Create template directory with built-in templates
-templates:
-	@echo "Creating built-in templates..."
-	@mkdir -p $(TEMPLATE_DIR)
-	
-	@echo "# Python" > $(TEMPLATE_DIR)/python.gitignore
-	@echo "__pycache__/" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo "*.py[cod]" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo "*\$$py.class" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo "*.so" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo ".Python" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo "venv/" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo "env/" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo ".env" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo "*.egg-info/" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo "dist/" >> $(TEMPLATE_DIR)/python.gitignore
-	@echo "build/" >> $(TEMPLATE_DIR)/python.gitignore
-	
-	@echo "# Node.js" > $(TEMPLATE_DIR)/node.gitignore
-	@echo "node_modules/" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo "npm-debug.log*" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo "yarn-debug.log*" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo "yarn-error.log*" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo ".npm" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo "dist/" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo "build/" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo ".next/" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo ".nuxt/" >> $(TEMPLATE_DIR)/node.gitignore
-	@echo "package-lock.json" >> $(TEMPLATE_DIR)/node.gitignore
-	
-	@echo "# Rust" > $(TEMPLATE_DIR)/rust.gitignore
-	@echo "target/" >> $(TEMPLATE_DIR)/rust.gitignore
-	@echo "Cargo.lock" >> $(TEMPLATE_DIR)/rust.gitignore
-	@echo "**/*.rs.bk" >> $(TEMPLATE_DIR)/rust.gitignore
-	@echo "*.pdb" >> $(TEMPLATE_DIR)/rust.gitignore
-	
-	@echo "# C" > $(TEMPLATE_DIR)/c.gitignore
-	@echo "*.o" >> $(TEMPLATE_DIR)/c.gitignore
-	@echo "*.a" >> $(TEMPLATE_DIR)/c.gitignore
-	@echo "*.so" >> $(TEMPLATE_DIR)/c.gitignore
-	@echo "*.out" >> $(TEMPLATE_DIR)/c.gitignore
-	@echo "*.exe" >> $(TEMPLATE_DIR)/c.gitignore
-	@echo "*.dylib" >> $(TEMPLATE_DIR)/c.gitignore
-	
-	@echo "# C++" > $(TEMPLATE_DIR)/cpp.gitignore
-	@echo "*.o" >> $(TEMPLATE_DIR)/cpp.gitignore
-	@echo "*.obj" >> $(TEMPLATE_DIR)/cpp.gitignore
-	@echo "*.exe" >> $(TEMPLATE_DIR)/cpp.gitignore
-	@echo "*.out" >> $(TEMPLATE_DIR)/cpp.gitignore
-	@echo "*.a" >> $(TEMPLATE_DIR)/cpp.gitignore
-	@echo "*.so" >> $(TEMPLATE_DIR)/cpp.gitignore
-	@echo "*.dylib" >> $(TEMPLATE_DIR)/cpp.gitignore
-	
-	@echo "# Java" > $(TEMPLATE_DIR)/java.gitignore
-	@echo "*.class" >> $(TEMPLATE_DIR)/java.gitignore
-	@echo "*.jar" >> $(TEMPLATE_DIR)/java.gitignore
-	@echo "*.war" >> $(TEMPLATE_DIR)/java.gitignore
-	@echo "*.ear" >> $(TEMPLATE_DIR)/java.gitignore
-	@echo "target/" >> $(TEMPLATE_DIR)/java.gitignore
-	@echo ".gradle/" >> $(TEMPLATE_DIR)/java.gitignore
-	@echo "build/" >> $(TEMPLATE_DIR)/java.gitignore
-	
-	@echo "# Go" > $(TEMPLATE_DIR)/go.gitignore
-	@echo "*.exe" >> $(TEMPLATE_DIR)/go.gitignore
-	@echo "*.test" >> $(TEMPLATE_DIR)/go.gitignore
-	@echo "*.out" >> $(TEMPLATE_DIR)/go.gitignore
-	@echo "vendor/" >> $(TEMPLATE_DIR)/go.gitignore
-	
-	@echo "# VS Code" > $(TEMPLATE_DIR)/vscode.gitignore
-	@echo ".vscode/" >> $(TEMPLATE_DIR)/vscode.gitignore
-	@echo "*.code-workspace" >> $(TEMPLATE_DIR)/vscode.gitignore
-	
-	@echo "# macOS" > $(TEMPLATE_DIR)/macos.gitignore
-	@echo ".DS_Store" >> $(TEMPLATE_DIR)/macos.gitignore
-	@echo ".AppleDouble" >> $(TEMPLATE_DIR)/macos.gitignore
-	@echo ".LSOverride" >> $(TEMPLATE_DIR)/macos.gitignore
-	
-	@echo "# Linux" > $(TEMPLATE_DIR)/linux.gitignore
-	@echo "*~" >> $(TEMPLATE_DIR)/linux.gitignore
-	@echo ".directory" >> $(TEMPLATE_DIR)/linux.gitignore
-	
-	@echo "# Windows" > $(TEMPLATE_DIR)/windows.gitignore
-	@echo "Thumbs.db" >> $(TEMPLATE_DIR)/windows.gitignore
-	@echo "ehthumbs.db" >> $(TEMPLATE_DIR)/windows.gitignore
-	@echo "Desktop.ini" >> $(TEMPLATE_DIR)/windows.gitignore
-	
-	@echo "✓ Created $(shell ls -1 $(TEMPLATE_DIR)/*.gitignore | wc -l) templates"
-
-install: $(TARGET)
-	@echo "Installing gitignore..."
+install: $(TARGET) show-prefix
+	@echo ""
+	@echo "Installing gitignore to $(PREFIX)..."
+	@echo ""
 	install -d $(BINDIR)
 	install -m 755 $(TARGET) $(BINDIR)
+	@echo "  ✓ Binary installed to $(BINDIR)/$(TARGET)"
 	@if [ -f man/gitignore.1 ]; then \
 		install -d $(MANDIR); \
 		install -m 644 man/gitignore.1 $(MANDIR); \
-		echo "  ✓ Manual page installed"; \
+		echo "  ✓ Manual page installed to $(MANDIR)/gitignore.1"; \
 	fi
-	@echo "  ✓ Binary installed to $(BINDIR)/$(TARGET)"
 	@echo ""
-	@echo "Run 'gitignore --help' to get started!"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "✓ Installation complete!"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+	@echo "Run: gitignore --help"
+	@echo ""
 
 uninstall:
+	@echo "Uninstalling from $(PREFIX)..."
 	rm -f $(BINDIR)/$(TARGET)
 	rm -f $(MANDIR)/gitignore.1
-	@echo "✓ gitignore uninstalled"
+	@echo "✓ Uninstalled from $(PREFIX)"
 
 clean:
+	@echo "Cleaning build artifacts..."
 	rm -f $(OBJECTS) $(TARGET)
-	rm -rf $(TEMPLATE_DIR)
 	@echo "✓ Clean complete"
+
+# Clean everything including generated templates.c
+distclean: clean
+	@echo "Removing generated files..."
+	rm -f $(SRCDIR)/templates.c
+	@echo "✓ Distribution clean complete"
+
+# Regenerate templates
+regen-templates:
+	@echo "Regenerating templates.c..."
+	@rm -f $(SRCDIR)/templates.c
+	@$(MAKE) templates
 
 # Test targets
 test: $(TARGET)
 	@echo "Running tests..."
+	@echo ""
 	@./$(TARGET) --version
+	@echo ""
 	@./$(TARGET) list
+	@echo ""
 	@echo "✓ Basic tests passed"
 
-# Development targets
+# Development build with debug symbols
 dev: CFLAGS += -g -DDEBUG
 dev: clean all
 
@@ -159,26 +128,82 @@ dev: clean all
 package: all
 	@echo "Creating distribution package..."
 	@mkdir -p dist/gitignore-$(VERSION)
-	@cp $(TARGET) dist/gitignore-$(VERSION)/
-	@cp README.md LICENSE dist/gitignore-$(VERSION)/
+	@cp $(TARGET) README.md LICENSE dist/gitignore-$(VERSION)/
 	@cp -r $(TEMPLATE_DIR) dist/gitignore-$(VERSION)/
+	@cp -r scripts dist/gitignore-$(VERSION)/
 	@cd dist && tar -czf gitignore-$(VERSION).tar.gz gitignore-$(VERSION)
 	@echo "✓ Package created: dist/gitignore-$(VERSION).tar.gz"
 
+# Create initial template directory structure
+setup-templates:
+	@echo "Setting up templates directory..."
+	@mkdir -p $(TEMPLATE_DIR)
+	@if [ ! -f $(TEMPLATE_DIR)/python.gitignore ]; then \
+		echo "Creating sample Python template..."; \
+		echo "# Python" > $(TEMPLATE_DIR)/python.gitignore; \
+		echo "__pycache__/" >> $(TEMPLATE_DIR)/python.gitignore; \
+		echo "*.py[cod]" >> $(TEMPLATE_DIR)/python.gitignore; \
+		echo "venv/" >> $(TEMPLATE_DIR)/python.gitignore; \
+		echo ".env" >> $(TEMPLATE_DIR)/python.gitignore; \
+	fi
+	@if [ ! -f $(TEMPLATE_DIR)/node.gitignore ]; then \
+		echo "Creating sample Node template..."; \
+		echo "# Node.js" > $(TEMPLATE_DIR)/node.gitignore; \
+		echo "node_modules/" >> $(TEMPLATE_DIR)/node.gitignore; \
+		echo "*.log" >> $(TEMPLATE_DIR)/node.gitignore; \
+		echo ".env" >> $(TEMPLATE_DIR)/node.gitignore; \
+	fi
+	@echo "✓ Template directory setup complete"
+	@echo "  Add your .gitignore templates to $(TEMPLATE_DIR)/"
+	@echo "  Then run: make templates"
+
 # Help target
 help:
-	@echo "Gitignore Tool - Makefile targets:"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  Gitignore Tool - Makefile Targets"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo ""
-	@echo "  make              - Build the project"
-	@echo "  make templates    - Create built-in templates"
-	@echo "  make install      - Install to system (requires sudo)"
-	@echo "  make uninstall    - Remove from system"
-	@echo "  make clean        - Remove build artifacts"
-	@echo "  make test         - Run basic tests"
-	@echo "  make dev          - Build with debug symbols"
-	@echo "  make package      - Create distribution package"
-	@echo "  make help         - Show this help"
+	@echo "BUILD TARGETS:"
+	@echo "  make                   - Build the project"
+	@echo "  make templates         - Generate templates.c from templates/"
+	@echo "  make regen-templates   - Regenerate templates.c"
+	@echo "  make dev               - Build with debug symbols"
+	@echo ""
+	@echo "INSTALLATION:"
+	@echo "  make install           - Install to $(PREFIX)"
+	@echo "  make PREFIX=/path install - Install to custom location"
+	@echo "  make uninstall         - Remove installation"
+	@echo "  make show-prefix       - Show current PREFIX"
+	@echo ""
+	@echo "CLEANING:"
+	@echo "  make clean             - Remove build artifacts"
+	@echo "  make distclean         - Remove all generated files"
+	@echo ""
+	@echo "TEMPLATES:"
+	@echo "  make setup-templates   - Create initial template directory"
+	@echo "  make templates         - Generate templates.c"
+	@echo ""
+	@echo "OTHER:"
+	@echo "  make test              - Run basic tests"
+	@echo "  make package           - Create distribution package"
+	@echo "  make help              - Show this help"
+	@echo ""
+	@echo "ENVIRONMENT VARIABLES:"
+	@echo "  PREFIX                 - Installation prefix (default: /usr/local)"
+	@echo "  CC                     - C compiler (default: gcc)"
+	@echo ""
+	@echo "EXAMPLES:"
+	@echo "  make                                    # Build with default prefix"
+	@echo "  make PREFIX=~/.local install            # Install to home directory"
+	@echo "  export PREFIX=/opt/gitignore && make install"
+	@echo ""
+	@echo "ADDING NEW TEMPLATES:"
+	@echo "  1. Create templates/yourname.gitignore"
+	@echo "  2. Add your patterns to the file"
+	@echo "  3. Run: make regen-templates"
+	@echo "  4. Run: make"
+	@echo ""
+	@echo "Current PREFIX: $(PREFIX)"
+	@echo ""
 
-VERSION = 2.0.0
-
-.SILENT: templates help
+.SILENT: help show-prefix

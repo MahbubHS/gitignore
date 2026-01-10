@@ -1,9 +1,9 @@
-// init.c - Enhanced with append mode and merge strategies
+// init.c - FIXED: Always append and remove duplicates
 #include "gitignore.h"
 
 int init_gitignore(char **langs, int count, int dry_run) {
     if (dry_run) {
-        print_info("[DRY RUN] Would create .gitignore");
+        print_info("[DRY RUN] Would create/update .gitignore");
         if (langs && count > 0) {
             printf("  Templates: ");
             for (int i = 0; i < count; i++) {
@@ -13,8 +13,11 @@ int init_gitignore(char **langs, int count, int dry_run) {
         return 0;
     }
     
-    // Auto backup if enabled
-    if (g_config && g_config->auto_backup && file_exists(".gitignore")) {
+    // Check if .gitignore exists
+    int gitignore_exists = file_exists(".gitignore");
+    
+    // Auto backup if enabled and file exists
+    if (g_config && g_config->auto_backup && gitignore_exists) {
         if (g_config->verbose) {
             print_info("Auto-backup enabled, creating backup...");
         }
@@ -25,34 +28,21 @@ int init_gitignore(char **langs, int count, int dry_run) {
     if (langs == NULL || count == 0) {
         char *auto_path = get_template_path(AUTO_TEMPLATE);
         if (auto_path && file_exists(auto_path)) {
-            // Copy auto.gitignore to .gitignore
-            FILE *src = fopen(auto_path, "r");
-            FILE *dst = fopen(".gitignore", "w");
-            
-            if (!src || !dst) {
-                print_error("Could not create .gitignore", ERR_PERMISSION_DENIED);
-                if (src) fclose(src);
-                if (dst) fclose(dst);
-                free(auto_path);
-                return 1;
-            }
-            
-            char buffer[4096];
-            size_t bytes;
-            while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-                fwrite(buffer, 1, bytes, dst);
-            }
-            
-            fclose(src);
-            fclose(dst);
+            // Use auto.gitignore - append mode
+            char *auto_langs[] = {"auto"};
             free(auto_path);
-            
-            print_success(".gitignore created from auto.gitignore");
-            return 0;
+            return merge_templates(auto_langs, 1, ".gitignore", 
+                                 gitignore_exists ? MERGE_SMART : MERGE_REPLACE);
         }
         free(auto_path);
         
-        return create_empty_gitignore();
+        // Create empty if file doesn't exist
+        if (!gitignore_exists) {
+            return create_empty_gitignore();
+        }
+        
+        print_info(".gitignore already exists (no changes)");
+        return 0;
     }
     
     // Remove duplicates and filter comments
@@ -60,14 +50,22 @@ int init_gitignore(char **langs, int count, int dry_run) {
     
     if (count == 0) {
         print_warning("No valid templates after filtering");
-        return create_empty_gitignore();
+        if (!gitignore_exists) {
+            return create_empty_gitignore();
+        }
+        return 0;
     }
     
-    // Merge templates
-    int result = merge_templates(langs, count, ".gitignore", MERGE_REPLACE);
+    // FIXED: Always use SMART merge (append + dedup)
+    int result = merge_templates(langs, count, ".gitignore", 
+                                gitignore_exists ? MERGE_SMART : MERGE_REPLACE);
     
     if (result == 0) {
-        print_success(".gitignore created successfully");
+        if (gitignore_exists) {
+            print_success(".gitignore updated successfully");
+        } else {
+            print_success(".gitignore created successfully");
+        }
         printf("  Templates: ");
         for (int i = 0; i < count; i++) {
             printf("%s%s%s%s", COLOR_GREEN, langs[i], COLOR_RESET,
@@ -103,51 +101,14 @@ int append_gitignore(char **langs, int count, merge_strategy_t strategy, int dry
     // Remove duplicates
     langs = remove_duplicates(langs, &count);
     
-    if (strategy == MERGE_APPEND) {
-        // Simple append mode
-        FILE *f = fopen(".gitignore", "a");
-        if (!f) {
-            print_error("Could not open .gitignore", ERR_PERMISSION_DENIED);
-            return 1;
-        }
-        
-        fprintf(f, "\n# Appended by gitignore tool\n");
-        
-        for (int i = 0; i < count; i++) {
-            char *template_path = get_template_path(langs[i]);
-            FILE *tmpl = NULL;
-            
-            if (template_path && file_exists(template_path)) {
-                tmpl = fopen(template_path, "r");
-            }
-            
-            if (!tmpl) {
-                char builtin_path[MAX_PATH_LEN];
-                snprintf(builtin_path, sizeof(builtin_path), "templates/%s.gitignore", langs[i]);
-                tmpl = fopen(builtin_path, "r");
-            }
-            
-            if (tmpl) {
-                fprintf(f, "\n# === %s ===\n", langs[i]);
-                char line[MAX_LINE_LEN];
-                while (fgets(line, sizeof(line), tmpl)) {
-                    fputs(line, f);
-                }
-                fclose(tmpl);
-            }
-            
-            if (template_path) free(template_path);
-        }
-        
-        fclose(f);
-        print_success("Templates appended to .gitignore");
-        
-    } else {
-        // Smart merge - remove duplicates across entire file
-        return merge_templates(langs, count, ".gitignore", MERGE_SMART);
+    // FIXED: Default to SMART merge
+    int result = merge_templates(langs, count, ".gitignore", MERGE_SMART);
+    
+    if (result == 0) {
+        print_success("Templates added to .gitignore");
     }
     
-    return 0;
+    return result;
 }
 
 int create_empty_gitignore(void) {
@@ -166,79 +127,151 @@ int create_empty_gitignore(void) {
 }
 
 int merge_templates(char **langs, int count, const char *output, merge_strategy_t strategy) {
-    FILE *out = NULL;
+    // FIXED: Read existing patterns for deduplication
     char **existing_patterns = NULL;
     int existing_count = 0;
     
-    // If smart merge, read existing patterns first
     if (strategy == MERGE_SMART && file_exists(output)) {
         FILE *existing = fopen(output, "r");
         if (existing) {
-            existing_patterns = malloc(sizeof(char*) * 1000);
+            existing_patterns = malloc(sizeof(char*) * 10000);
             char line[MAX_LINE_LEN];
             
             while (fgets(line, sizeof(line), existing)) {
                 // Skip comments and empty lines
                 if (!is_comment(line) && strlen(line) > 1) {
-                    // Trim newline
-                    line[strcspn(line, "\n")] = 0;
-                    existing_patterns[existing_count++] = strdup(line);
+                    // Trim newline and whitespace
+                    line[strcspn(line, "\n\r")] = 0;
+                    
+                    // Trim leading/trailing whitespace
+                    char *trimmed = line;
+                    while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
+                    
+                    if (strlen(trimmed) > 0) {
+                        existing_patterns[existing_count++] = strdup(trimmed);
+                    }
                 }
             }
             fclose(existing);
         }
     }
     
-    out = fopen(output, "w");
+    // Open output file
+    FILE *out = fopen(output, strategy == MERGE_REPLACE ? "w" : "a");
     if (!out) {
-        print_error("Could not create output file", ERR_PERMISSION_DENIED);
+        print_error("Could not open output file", ERR_PERMISSION_DENIED);
+        
+        // Free existing patterns
+        if (existing_patterns) {
+            for (int i = 0; i < existing_count; i++) {
+                free(existing_patterns[i]);
+            }
+            free(existing_patterns);
+        }
         return 1;
     }
     
-    fprintf(out, "# Generated by gitignore tool v%s\n", VERSION);
-    fprintf(out, "# https://github.com/mahbubhs/gitignore\n\n");
+    // Add header only for new files
+    if (strategy == MERGE_REPLACE) {
+        fprintf(out, "# Generated by gitignore tool v%s\n", VERSION);
+    } else {
+        // Add separator for appended content
+        fprintf(out, "\n# Added by gitignore tool\n");
+    }
     
     for (int i = 0; i < count; i++) {
-        char *template_path = get_template_path(langs[i]);
+        const char *template_content = NULL;
+        char *custom_path = NULL;
         FILE *tmpl = NULL;
         
-        if (template_path && file_exists(template_path)) {
-            tmpl = fopen(template_path, "r");
+        // Priority 1: Check custom template
+        custom_path = get_template_path(langs[i]);
+        if (custom_path && file_exists(custom_path)) {
+            tmpl = fopen(custom_path, "r");
+            if (g_config && g_config->verbose) {
+                printf("  Using custom template: %s\n", langs[i]);
+            }
         }
         
+        // Priority 2: Check built-in template
         if (!tmpl) {
-            char builtin_path[MAX_PATH_LEN];
-            snprintf(builtin_path, sizeof(builtin_path), "templates/%s.gitignore", langs[i]);
-            tmpl = fopen(builtin_path, "r");
+            template_content = get_builtin_template(langs[i]);
+            if (template_content && g_config && g_config->verbose) {
+                printf("  Using built-in template: %s\n", langs[i]);
+            }
         }
         
-        if (tmpl) {
-            fprintf(out, "# ===== %s =====\n", langs[i]);
+        if (tmpl || template_content) {
+            fprintf(out, "\n# ===== %s =====\n", langs[i]);
             
-            char line[MAX_LINE_LEN];
-            while (fgets(line, sizeof(line), tmpl)) {
-                // Smart merge: skip duplicates
-                if (strategy == MERGE_SMART && !is_comment(line)) {
-                    char clean_line[MAX_LINE_LEN];
-                    strncpy(clean_line, line, sizeof(clean_line));
-                    clean_line[strcspn(clean_line, "\n")] = 0;
-                    
-                    int is_duplicate = 0;
-                    for (int j = 0; j < existing_count; j++) {
-                        if (strcmp(clean_line, existing_patterns[j]) == 0) {
-                            is_duplicate = 1;
-                            break;
+            if (tmpl) {
+                // Read from custom file
+                char line[MAX_LINE_LEN];
+                while (fgets(line, sizeof(line), tmpl)) {
+                    // Check for duplicates in SMART mode
+                    if (strategy == MERGE_SMART && !is_comment(line)) {
+                        char clean_line[MAX_LINE_LEN];
+                        strncpy(clean_line, line, sizeof(clean_line));
+                        clean_line[strcspn(clean_line, "\n\r")] = 0;
+                        
+                        // Trim whitespace
+                        char *trimmed = clean_line;
+                        while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
+                        
+                        // Check if already exists
+                        int is_duplicate = 0;
+                        for (int j = 0; j < existing_count; j++) {
+                            if (strcmp(trimmed, existing_patterns[j]) == 0) {
+                                is_duplicate = 1;
+                                break;
+                            }
                         }
+                        
+                        if (is_duplicate) continue;
                     }
                     
-                    if (is_duplicate) continue;
+                    fputs(line, out);
                 }
+                fclose(tmpl);
+            } else {
+                // Write built-in content
+                const char *line_start = template_content;
+                const char *line_end;
                 
-                fputs(line, out);
+                while (*line_start) {
+                    line_end = strchr(line_start, '\n');
+                    if (!line_end) line_end = line_start + strlen(line_start);
+                    
+                    int line_len = line_end - line_start;
+                    char line[MAX_LINE_LEN];
+                    strncpy(line, line_start, line_len);
+                    line[line_len] = '\0';
+                    
+                    // Check for duplicates in SMART mode
+                    if (strategy == MERGE_SMART && line_len > 0 && line[0] != '#') {
+                        // Trim whitespace
+                        char *trimmed = line;
+                        while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
+                        
+                        // Check if already exists
+                        int is_duplicate = 0;
+                        for (int j = 0; j < existing_count; j++) {
+                            if (strcmp(trimmed, existing_patterns[j]) == 0) {
+                                is_duplicate = 1;
+                                break;
+                            }
+                        }
+                        
+                        if (!is_duplicate) {
+                            fprintf(out, "%s\n", line);
+                        }
+                    } else {
+                        fprintf(out, "%s\n", line);
+                    }
+                    
+                    line_start = *line_end ? line_end + 1 : line_end;
+                }
             }
-            
-            fprintf(out, "\n");
-            fclose(tmpl);
             
             if (g_config && g_config->verbose) {
                 printf("  %s+%s %s\n", COLOR_GREEN, COLOR_RESET, langs[i]);
@@ -248,7 +281,7 @@ int merge_templates(char **langs, int count, const char *output, merge_strategy_
             printf("  %s\n", langs[i]);
         }
         
-        if (template_path) free(template_path);
+        if (custom_path) free(custom_path);
     }
     
     fclose(out);
