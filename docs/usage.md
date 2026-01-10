@@ -1,391 +1,676 @@
 # Usage Guide
 
-Complete reference for all gitignore commands and options.
+This comprehensive guide covers all gitignore commands, options, and usage patterns for effective .gitignore file management.
 
-## 📖 Command Syntax
+## 📋 Table of Contents
+
+- [Quick Start](#-quick-start)
+- [Command Reference](#-command-reference)
+- [Global Options](#-global-options)
+- [Advanced Usage](#-advanced-usage)
+- [Best Practices](#-best-practices)
+- [Troubleshooting](#-troubleshooting)
+
+## 🚀 Quick Start
+
+### Basic Usage Patterns
 
 ```bash
-gitignore [command] [options] [arguments]
+# Initialize project with templates
+gitignore init python vscode linux
+
+# Add custom patterns
+gitignore .env secrets/ *.log
+
+# Auto-detect project type
+gitignore auto
+
+# Preview changes first
+gitignore --dry-run init rust
 ```
 
-## 🎯 Core Commands
+### Common Workflows
 
-### Adding Patterns
+| Scenario                | Command                               | Description                 |
+| ----------------------- | ------------------------------------- | --------------------------- |
+| **New Python Project**  | `gitignore init python vscode`        | Language + editor templates |
+| **Node.js Application** | `gitignore init node linux docker`    | Runtime + OS + container    |
+| **Full-Stack App**      | `gitignore init python node postgres` | Multiple technologies       |
+| **Custom Patterns**     | `gitignore .env dist/ build/`         | Project-specific ignores    |
 
-Add individual patterns to `.gitignore`:
+## 📖 Command Reference
+
+### Core Commands
+
+#### `gitignore init [templates...]`
+
+Initialize or update `.gitignore` with built-in templates.
+
+**Syntax:**
 
 ```bash
-# Single pattern
-gitignore node_modules/
-
-# Multiple patterns (space-separated)
-gitignore node_modules/ *.log .env dist/
-
-# Patterns with wildcards
-gitignore *.tmp *.swp *~ *.bak
+gitignore init <template> [template...] [options]
 ```
 
-**Smart Features:**
-- ✅ Automatically creates `.gitignore` if it doesn't exist
-- ✅ Checks for duplicates before adding
-- ✅ Preserves existing patterns
-- ✅ Works with relative and absolute paths
-
-### Initializing with Templates
-
-Create `.gitignore` from built-in templates:
+**Examples:**
 
 ```bash
 # Single template
 gitignore init python
 
 # Multiple templates
-gitignore init python node vscode linux
+gitignore init python vscode linux
 
-# All templates for a project type
-gitignore init rust cpp go
+# With options
+gitignore init rust --verbose --dry-run
 ```
+
+**Available Templates:**
+
+| Category       | Templates                                          | Description            |
+| -------------- | -------------------------------------------------- | ---------------------- |
+| **Languages**  | `python`, `node`, `rust`, `go`, `java`, `cpp`, `c` | Programming languages  |
+| **Frameworks** | `django`, `flask`, `react`, `vue`, `angular`       | Web frameworks         |
+| **Tools**      | `docker`, `kubernetes`, `terraform`                | DevOps tools           |
+| **Editors**    | `vscode`, `intellij`, `vim`, `emacs`               | IDE configurations     |
+| **OS**         | `linux`, `macos`, `windows`                        | Operating system files |
 
 **Features:**
-- ✅ Merges multiple templates intelligently
-- ✅ Removes duplicate patterns automatically
-- ✅ Preserves existing `.gitignore` content
-- ✅ No external template files needed
 
-### Auto-Detection
+- ✅ **Smart Merging:** Automatically removes duplicate patterns
+- ✅ **Backup Creation:** Saves previous `.gitignore` before changes
+- ✅ **Template Validation:** Verifies template existence before processing
+- ✅ **Progress Feedback:** Shows which templates are being applied
 
-Automatically detect project type and apply appropriate templates:
+#### `gitignore sync [templates...]`
+
+Download and apply official templates from GitHub's gitignore repository.
+
+**Syntax:**
 
 ```bash
+gitignore sync <template> [template...] [options]
+```
+
+**Examples:**
+
+```bash
+# Sync single template
+gitignore sync python
+
+# Sync multiple templates
+gitignore sync rust go java
+
+# Force refresh cache
+gitignore sync python --no-cache
+```
+
+**Network Features:**
+
+- 🔄 **Intelligent Caching:** 24-hour cache for downloaded templates
+- 📡 **Offline Fallback:** Uses cached templates when offline
+- ⚡ **Parallel Downloads:** Fetches multiple templates concurrently
+- 🔒 **Rate Limiting:** Respects GitHub API limits
+
+#### `gitignore auto`
+
+Automatically detect project type and apply appropriate templates.
+
+**Detection Rules:**
+
+| File Pattern                   | Detected Template | Priority |
+| ------------------------------ | ----------------- | -------- |
+| `package.json`                 | `node`            | High     |
+| `requirements.txt`, `setup.py` | `python`          | High     |
+| `Cargo.toml`                   | `rust`            | High     |
+| `go.mod`                       | `go`              | High     |
+| `pom.xml`, `build.gradle`      | `java`            | High     |
+| `Dockerfile`                   | `docker`          | Medium   |
+| `.vscode/`                     | `vscode`          | Low      |
+
+**Examples:**
+
+```bash
+# Auto-detect and apply
 gitignore auto
+
+# Preview what would be applied
+gitignore auto --dry-run
+
+# Force re-detection
+gitignore auto --force
 ```
 
-**Detection Logic:**
-- `package.json` → Node.js
-- `requirements.txt` / `setup.py` → Python
-- `Cargo.toml` → Rust
-- `go.mod` → Go
-- `pom.xml` / `build.gradle` → Java
-- And more...
+#### `gitignore [patterns...]`
 
-## 🎨 Advanced Commands
+Add custom patterns directly to `.gitignore`.
 
-### Interactive Mode
-
-User-friendly template selection:
+**Syntax:**
 
 ```bash
-# Short form
-gitignore -t
-
-# Long form
-gitignore interactive
+gitignore <pattern> [pattern...] [options]
 ```
 
-Shows numbered list of templates with descriptions.
+**Examples:**
+
+```bash
+# Single pattern
+gitignore node_modules/
+
+# Multiple patterns
+gitignore *.log .env dist/
+
+# With wildcards
+gitignore *.tmp *.swp *~
+
+# Force add command names
+gitignore --add init sync list
+```
+
+**Pattern Intelligence:**
+
+- 🧠 **Duplicate Detection:** Skips existing patterns
+- 📁 **Directory Recognition:** Handles paths with `/`
+- 🌟 **Wildcard Support:** Processes `*`, `?`, `[]` patterns
+- 🔍 **Command vs Pattern:** Automatically distinguishes between commands and patterns
 
 ### Template Management
 
+#### `gitignore list [filter]`
+
+List available templates with descriptions.
+
+**Syntax:**
+
 ```bash
-# List all available templates
+gitignore list [filter] [options]
+```
+
+**Examples:**
+
+```bash
+# List all templates
 gitignore list
 
-# Filter templates
+# Filter by language
 gitignore list python
 
-# Show only built-in templates
+# Show detailed information
+gitignore list --verbose
+
+# List only built-in templates
 gitignore list --builtin
-
-# Show only custom templates
-gitignore list --local
-
-# Preview template contents
-gitignore show python
-gitignore cat rust
 ```
 
-### GitHub Sync
+**Output Format:**
 
-Download official templates from GitHub's repository:
+```
+Available Templates:
+├── Languages
+│   ├── python     - Python projects
+│   ├── node       - Node.js applications
+│   └── rust       - Rust projects
+├── Tools
+│   ├── docker     - Docker containers
+│   └── kubernetes - Kubernetes manifests
+└── Editors
+    ├── vscode     - Visual Studio Code
+    └── intellij   - IntelliJ IDEA
+```
+
+#### `gitignore show <template>`
+
+Display template contents without applying.
+
+**Syntax:**
 
 ```bash
-# Single language
-gitignore sync python
-
-# Multiple languages
-gitignore sync rust go java
+gitignore show <template> [options]
 ```
+
+**Examples:**
+
+```bash
+# Show template contents
+gitignore show python
+
+# Show with line numbers
+gitignore show python --numbered
+
+# Show multiple templates
+gitignore show python node
+```
+
+### Interactive Commands
+
+#### `gitignore interactive`
+
+Launch interactive template selection interface.
 
 **Features:**
-- ✅ Downloads from github.com/github/gitignore
-- ✅ Merges with existing `.gitignore`
-- ✅ 24-hour caching for performance
-- ✅ Automatic duplicate removal
 
-### Global Gitignore
+- 📋 **Numbered Selection:** Choose templates by number
+- 🔍 **Search/Filter:** Find templates by typing
+- 📄 **Preview:** See template contents before applying
+- ↩️ **Multi-Select:** Choose multiple templates at once
 
-Manage global `.gitignore` file:
+**Usage:**
 
 ```bash
-# Create global gitignore
-gitignore global init
-
-# Add templates to global gitignore
-gitignore global add macos vscode linux
+gitignore interactive
+# or
+gitignore -t
 ```
 
-**Setup Git to use global gitignore:**
+### Global Gitignore Management
+
+#### `gitignore global init`
+
+Create and initialize global `.gitignore` file.
+
+**Setup Process:**
+
 ```bash
+# Initialize global gitignore
+gitignore global init
+
+# Configure Git to use it
 git config --global core.excludesfile ~/.gitignore_global
 ```
 
-### Backup & Restore
+#### `gitignore global add [templates...]`
+
+Add templates to global `.gitignore`.
+
+**Examples:**
 
 ```bash
-# Create backup before changes
-gitignore backup
+# Add OS-specific patterns
+gitignore global add macos linux
 
-# List available backups
-gitignore backups
-gitignore history
-
-# Restore from backup
-gitignore restore
-gitignore restore backup_2024-01-10_14-30-00
+# Add editor configurations
+gitignore global add vscode intellij
 ```
 
-### Append vs Update
+### Backup & Recovery
+
+#### `gitignore backup`
+
+Create timestamped backup of current `.gitignore`.
+
+**Backup Location:** `.gitignore.backup.YYYY-MM-DD_HH-MM-SS`
+
+#### `gitignore backups`
+
+List all available backups.
+
+**Output:**
+
+```
+Available Backups:
+├── .gitignore.backup.2024-01-15_14-30-22  (2.1KB)
+├── .gitignore.backup.2024-01-10_09-15-33  (1.8KB)
+└── .gitignore.backup.2024-01-05_16-45-12  (1.5KB)
+```
+
+#### `gitignore restore [backup]`
+
+Restore `.gitignore` from backup.
+
+**Examples:**
 
 ```bash
-# Append (simple concatenation)
-gitignore append python
+# Restore latest backup
+gitignore restore
 
-# Update (smart merging with deduplication)
-gitignore update node
+# Restore specific backup
+gitignore restore .gitignore.backup.2024-01-10_09-15-33
+
+# List backups first
+gitignore backups
 ```
 
 ### Cache Management
 
+#### `gitignore cache clear`
+
+Clear downloaded template cache.
+
+**Effects:**
+
+- 🗑️ Removes all cached GitHub templates
+- 🔄 Forces fresh downloads on next sync
+- 💾 Frees disk space
+
+## ⚙️ Global Options
+
+### Output Control
+
+| Flag        | Short | Description     | Example                    |
+| ----------- | ----- | --------------- | -------------------------- |
+| `--verbose` | `-v`  | Detailed output | `gitignore -v init python` |
+| `--quiet`   | `-q`  | Minimal output  | `gitignore -q init python` |
+| `--dry-run` | `-n`  | Preview changes | `gitignore -n init python` |
+
+### Behavior Modification
+
+| Flag         | Description              | Example                            |
+| ------------ | ------------------------ | ---------------------------------- |
+| `--force`    | Overwrite without backup | `gitignore --force init python`    |
+| `--no-cache` | Skip cache for sync      | `gitignore sync python --no-cache` |
+| `--add`      | Force pattern addition   | `gitignore --add init sync`        |
+
+### Information
+
+| Flag        | Short | Description              |
+| ----------- | ----- | ------------------------ |
+| `--help`    | `-h`  | Show help information    |
+| `--version` | `-V`  | Show version information |
+
+## 🎨 Advanced Usage
+
+### Command Chaining
+
+Combine multiple operations efficiently:
+
 ```bash
-# Clear downloaded template cache
-gitignore cache clear
+# Initialize, add patterns, backup
+gitignore init python vscode && gitignore .env dist/ && gitignore backup
 ```
 
-## ⚙️ Command-Line Options
+### Template Combinations
 
-### Global Flags
+**Web Development Stack:**
 
 ```bash
-# Show help
-gitignore --help
-gitignore -h
-
-# Show version
-gitignore --version
-gitignore -v
-
-# Dry run (preview changes)
-gitignore --dry-run init python
-
-# Verbose output
-gitignore --verbose init python
-
-# Quiet mode (minimal output)
-gitignore --quiet init python
+gitignore init node react typescript vscode docker
 ```
 
-### Special Flags
+**Data Science Project:**
 
 ```bash
-# Force add command names as patterns
-gitignore --add init sync list
-
-# Alternative short forms
-gitignore -i python    # Same as init python
-gitignore -s python    # Same as sync python
+gitignore init python jupyter vscode linux
 ```
 
-## 🔍 Pattern vs Command Detection
+**System Administration:**
 
-Gitignore intelligently distinguishes between commands and patterns:
-
-### Automatically Treated as Patterns:
 ```bash
-gitignore node_modules/     # Contains /
-gitignore *.log            # Contains *
-gitignore .env             # Contains .
-gitignore myfile.txt       # File exists
+gitignore init shell docker ansible linux
 ```
 
-### Require `--add` Flag (Command Conflicts):
-```bash
-# These are commands, not patterns
-gitignore init             # Command
-gitignore sync             # Command
-gitignore list             # Command
+### Custom Workflow Scripts
 
-# To add as patterns, use --add
-gitignore --add init      # Adds 'init' as pattern
-gitignore --add sync list # Adds both as patterns
-```
-
-**Error for ambiguous arguments:**
-```bash
-$ gitignore sync
-✗ Error: Ambiguous argument - did you mean a command or pattern?
-
-If you want to use the 'sync' command, check: gitignore --help
-If you want to add 'sync' as a pattern, use: gitignore --add sync
-```
-
-## 📋 Examples
-
-### Basic Workflow
+Create reusable setup scripts:
 
 ```bash
-# Start new project
-mkdir my-project && cd my-project
-git init
+#!/bin/bash
+# setup-gitignore.sh
 
-# Initialize with templates
-gitignore init python vscode
+# Initialize project
+gitignore init python django vscode
 
 # Add custom patterns
-gitignore .env secrets/ *.log
+gitignore .env media/ staticfiles/
 
-# Backup current state
+# Create backup
 gitignore backup
 
-# Update with more templates
-gitignore init linux
-
-# Check what changed
-git diff .gitignore
+echo "Gitignore setup complete!"
 ```
 
-### Advanced Usage
+### Integration with Git Hooks
+
+Automate gitignore management:
 
 ```bash
-# Preview changes without applying
-gitignore --dry-run init rust go
-
-# Use interactive mode
-gitignore -t
-
-# Sync from GitHub
-gitignore sync python node
-
-# Manage global gitignore
-gitignore global init
-gitignore global add macos windows
-
-# Work with backups
-gitignore backups
-gitignore restore backup_2024-01-10_12-00-00
+# .git/hooks/post-commit
+#!/bin/bash
+# Auto-backup after commits
+gitignore backup > /dev/null
 ```
 
-### Multi-Language Projects
+## 🧠 Pattern Intelligence
+
+### Automatic Detection Logic
+
+Gitignore uses sophisticated heuristics to distinguish commands from patterns:
+
+**Always Treated as Patterns:**
+
+- Contains path separators: `node_modules/`, `src/main/`
+- Contains wildcards: `*.log`, `temp*`, `file?.txt`
+- Contains dots: `.env`, `.DS_Store`
+- Existing files: `myfile.txt` (if file exists)
+
+**Command Conflicts (Require `--add`):**
+
+- `init`, `sync`, `list`, `show`, `auto`
+- `backup`, `restore`, `global`
+- Any built-in template name
+
+**Error Handling:**
 
 ```bash
-# Full-stack application
-gitignore init python node java
-
-# Add all relevant tools
-gitignore init vscode intellij docker
-
-# Add OS-specific patterns
-gitignore init linux macos windows
-
-# Custom patterns
-gitignore dist/ build/ target/ *.tmp
+$ gitignore sync
+✗ Error: Ambiguous argument 'sync'
+  → Did you mean the 'sync' command? Use: gitignore sync <template>
+  → Or add as pattern? Use: gitignore --add sync
 ```
+
+## 📊 Performance Optimization
+
+### Caching Strategies
+
+| Operation              | Cache Type | Duration | Purpose                 |
+| ---------------------- | ---------- | -------- | ----------------------- |
+| **Template Downloads** | File cache | 24 hours | Reduce network requests |
+| **Template Metadata**  | Memory     | Session  | Fast lookups            |
+| **Configuration**      | Memory     | Session  | Avoid file I/O          |
+
+### Memory Usage
+
+| Component              | Typical Usage | Notes                   |
+| ---------------------- | ------------- | ----------------------- |
+| **Binary + Templates** | ~2MB          | Embedded templates      |
+| **Runtime Memory**     | < 1MB         | Configuration + buffers |
+| **Cache Storage**      | Variable      | Downloaded templates    |
+
+## 🛡️ Safety Features
+
+### Automatic Backups
+
+- 📦 **Pre-Modification:** Backup created before any changes
+- 🏷️ **Timestamped:** Format: `YYYY-MM-DD_HH-MM-SS`
+- 🔄 **Easy Restore:** `gitignore restore` to recover
+- 📂 **Retention:** Manual cleanup required
+
+### Dry Run Mode
+
+Preview all changes before applying:
+
+```bash
+$ gitignore --dry-run init python
+[DRY RUN] Would create .gitignore with:
+  - Python.gitignore (148 patterns)
+  - Would backup existing .gitignore to .gitignore.backup.2024-01-15_14-30-22
+  - No actual changes made
+```
+
+### Conflict Resolution
+
+- 🔍 **Duplicate Detection:** Automatic pattern deduplication
+- ⚖️ **Merge Intelligence:** Smart conflict resolution
+- 📝 **Preserve Comments:** Maintains existing comments
+- 🔄 **Non-Destructive:** Never removes user-added patterns
 
 ## 🎯 Best Practices
 
-### 1. Use Auto-Detection First
+### Project Setup Workflow
+
 ```bash
-gitignore auto  # Let gitignore detect your project type
-```
+# 1. Initialize repository
+git init
 
-### 2. Layer Templates
-```bash
-# Start with language
-gitignore init python
+# 2. Auto-detect project type
+gitignore auto
 
-# Add editor
-gitignore init vscode
+# 3. Add additional templates
+gitignore init vscode linux
 
-# Add OS
-gitignore init linux
+# 4. Add custom patterns
+gitignore .env secrets/ logs/
 
-# Add custom patterns
-gitignore .env secrets/
-```
-
-### 3. Regular Backups
-```bash
-# Before major changes
+# 5. Create backup
 gitignore backup
-
-# List backups
-gitignore backups
 ```
 
-### 4. Use Dry Run for Safety
-```bash
-# Always preview first
-gitignore --dry-run init rust
-```
+### Template Selection Guidelines
 
-### 5. Combine Commands Efficiently
-```bash
-# Instead of multiple commands
-gitignore init python
-gitignore init vscode
-gitignore init linux
+| Project Type     | Recommended Templates              | Rationale                         |
+| ---------------- | ---------------------------------- | --------------------------------- |
+| **Web App**      | `node`, `react`, `vscode`, `linux` | Runtime + framework + editor + OS |
+| **API Service**  | `python`, `docker`, `linux`        | Language + container + OS         |
+| **CLI Tool**     | `rust`, `linux`, `macos`           | Language + cross-platform         |
+| **Data Science** | `python`, `jupyter`, `vscode`      | Language + notebook + editor      |
 
-# Use one command
-gitignore init python vscode linux
-```
+### Maintenance Practices
+
+- 🔄 **Regular Backups:** Before major changes
+- 📋 **Version Control:** Commit `.gitignore` changes
+- 🔍 **Review Patterns:** Audit periodically for relevance
+- 📚 **Stay Updated:** Use `sync` for latest official templates
+
+### Performance Tips
+
+- ⚡ **Use Cache:** Let caching reduce network requests
+- 📦 **Batch Operations:** Combine multiple templates in one command
+- 🔍 **Preview First:** Use `--dry-run` for complex operations
+- 🧹 **Clean Cache:** Periodically clear old cached templates
 
 ## 🆘 Troubleshooting
 
-### Common Issues
+### Common Issues & Solutions
 
-**"Pattern already exists"**
-- Gitignore automatically skips duplicates
-- Use `--verbose` to see what's happening
+#### "Template not found" Error
 
-**"Template not found"**
-- Check available templates: `gitignore list`
-- Verify spelling
+**Symptoms:**
 
-**"Permission denied"**
-- Check file permissions on `.gitignore`
-- Ensure write access to current directory
+```bash
+✗ Error: Template 'xyz' not found
+```
 
-**"Network error" on sync**
-- Check internet connection
-- GitHub might be rate-limiting requests
+**Solutions:**
+
+```bash
+# Check available templates
+gitignore list
+
+# Search for similar templates
+gitignore list | grep -i xyz
+
+# Use sync for official templates
+gitignore sync xyz
+```
+
+#### Permission Denied
+
+**Symptoms:**
+
+```bash
+✗ Error: Permission denied writing .gitignore
+```
+
+**Solutions:**
+
+```bash
+# Check file permissions
+ls -la .gitignore
+
+# Fix permissions
+chmod 644 .gitignore
+
+# Check directory permissions
+ls -ld .
+```
+
+#### Network Connection Issues
+
+**Symptoms:**
+
+```bash
+✗ Error: Network request failed
+```
+
+**Solutions:**
+
+```bash
+# Check internet connection
+curl -I https://github.com
+
+# Use cached templates
+gitignore sync python  # Will use cache if available
+
+# Force offline mode
+gitignore init python  # Uses built-in templates
+```
+
+#### Command vs Pattern Confusion
+
+**Symptoms:**
+
+```bash
+✗ Error: Ambiguous argument 'init'
+```
+
+**Solutions:**
+
+```bash
+# For command usage
+gitignore init python
+
+# For pattern addition
+gitignore --add init
+
+# Get help
+gitignore --help
+```
+
+### Diagnostic Commands
+
+```bash
+# Show version and build info
+gitignore --version
+
+# Verbose output for debugging
+gitignore --verbose init python
+
+# Dry run to preview
+gitignore --dry-run init python
+
+# Check cache status
+gitignore cache info  # (if implemented)
+```
 
 ### Getting Help
 
 ```bash
-# Show all commands
+# General help
 gitignore --help
 
-# List available templates
+# Command-specific help
+gitignore init --help
+
+# List all templates
 gitignore list
 
 # Show template contents
 gitignore show python
-
-# Verbose output
-gitignore --verbose init python
 ```
 
-## 📚 Related Topics
+## 📚 Related Documentation
 
-- [Template Reference](templates.md) - All available templates
-- [Configuration Guide](configuration.md) - Customize behavior
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions
+- **[Installation Guide](installation.md)** - Setup and system requirements
+- **[Template Reference](templates.md)** - Complete template catalog
+- **[Configuration Guide](configuration.md)** - Customization options
+- **[API Reference](api-reference.md)** - Developer documentation
+- **[Contributing Guide](contributing.md)** - Development guidelines

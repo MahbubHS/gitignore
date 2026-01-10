@@ -1,445 +1,967 @@
 # Configuration Guide
 
-Customize gitignore behavior with configuration files and environment variables.
+Comprehensive guide to customizing gitignore behavior through configuration files, environment variables, and advanced settings.
+
+## 📋 Table of Contents
+
+- [Configuration Overview](#-configuration-overview)
+- [Configuration Files](#-configuration-files)
+- [Core Settings](#-core-settings)
+- [Advanced Configuration](#-advanced-configuration)
+- [Environment Variables](#-environment-variables)
+- [Directory Structure](#-directory-structure)
+- [Configuration Examples](#-configuration-examples)
+- [Troubleshooting](#-troubleshooting)
+
+## 🎯 Configuration Overview
+
+### Configuration Architecture
+
+Gitignore uses a hierarchical configuration system with multiple override levels:
+
+```
+┌─────────────────────────────────────┐
+│      Command-line Flags             │  Highest Priority
+│   --verbose, --quiet, --dry-run     │
+├─────────────────────────────────────┤
+│      Environment Variables          │
+│   GITIGNORE_VERBOSE, NO_COLOR       │
+├─────────────────────────────────────┤
+│      User Configuration File        │
+│   ~/.config/gitignore/config.conf   │
+├─────────────────────────────────────┤
+│      Built-in Defaults              │  Lowest Priority
+│   Compiled default values           │
+└─────────────────────────────────────┘
+```
+
+### Configuration Methods
+
+| Method            | Scope          | Persistence   | Override           |
+| ----------------- | -------------- | ------------- | ------------------ |
+| **Command Flags** | Single command | None          | All other settings |
+| **Environment**   | Session        | Current shell | File config        |
+| **Config File**   | User           | Permanent     | Defaults           |
+| **Built-in**      | System         | N/A           | N/A                |
 
 ## 📁 Configuration Files
 
-### Main Configuration File
+### Primary Configuration File
 
 **Location:** `~/.config/gitignore/config.conf`
 
-**Format:** Simple key=value pairs
+**Format:** INI-style key=value pairs with optional sections
 
-```conf
-# gitignore configuration file
+**File Structure:**
 
-# Output settings
-verbose=false
-quiet=false
-use_color=true
+```ini
+# gitignore Configuration File
+# Lines starting with # are comments
+# Format: key=value (no spaces around =)
 
-# Backup settings
-auto_backup=true
+[general]
+verbose = false
+quiet = false
+use_color = true
 
-# Cache settings
-cache_enabled=true
-cache_duration=86400
+[backup]
+auto_backup = true
+backup_dir = ~/.config/gitignore/backups
 
-# Default templates (one per line)
-default_templates=python
-default_templates=vscode
+[cache]
+enabled = true
+duration = 86400
+cache_dir = ~/.config/gitignore/cache
+
+[templates]
+default = python,vscode,linux
+custom_dir = ~/.config/gitignore/templates
 ```
 
-### Creating Configuration File
+### Configuration File Creation
+
+#### Automated Setup
 
 ```bash
-# Create config directory
+# Create configuration directory
 mkdir -p ~/.config/gitignore
 
-# Create config file
+# Generate default configuration
 cat > ~/.config/gitignore/config.conf << 'EOF'
-# My gitignore configuration
+# gitignore Configuration
+# Generated on $(date)
 
-# Enable colors and verbosity
-use_color=true
-verbose=false
-quiet=false
+[general]
+verbose = false
+quiet = false
+use_color = true
 
-# Always backup before changes
-auto_backup=true
+[backup]
+auto_backup = true
 
-# Cache GitHub templates for 24 hours
-cache_enabled=true
-cache_duration=86400
+[cache]
+enabled = true
+duration = 86400
 
-# Default templates for new projects
-default_templates=python
-default_templates=vscode
-default_templates=linux
+[templates]
+default = python,vscode
 EOF
 ```
 
-## ⚙️ Configuration Options
+#### Interactive Configuration
 
-### Output Settings
+```bash
+# Use gitignore to help create config
+gitignore config init  # (if implemented)
 
-#### `verbose`
-
-Control detailed output.
-
-```conf
-verbose=false  # Default: minimal output
-verbose=true   # Show detailed operation info
+# Or manually create with validation
+vim ~/.config/gitignore/config.conf
 ```
 
-**Command-line override:** `--verbose` / `-V`
+### Configuration Validation
 
-**Example output with verbose:**
+**Automatic Validation:**
+
+- Unknown keys generate warnings
+- Invalid values fall back to defaults
+- Malformed files use defaults entirely
+
+**Manual Validation:**
+
+```bash
+# Test configuration loading
+gitignore --verbose list 2>&1 | grep -i config
+
+# Validate syntax
+python3 -c "
+import configparser
+config = configparser.ConfigParser()
+config.read('~/.config/gitignore/config.conf')
+print('Configuration syntax: OK')
+"
+```
+
+## ⚙️ Core Settings
+
+### Output Control
+
+#### `verbose` (boolean)
+
+**Description:** Enable detailed operation logging
+
+**Values:** `true`, `false` (default: `false`)
+
+**Configuration:**
+
+```ini
+verbose = true
+```
+
+**Command Override:** `--verbose`, `-v`
+
+**Effects:**
+
+- Shows configuration loading details
+- Displays template processing steps
+- Reports cache hits/misses
+- Shows file operation progress
+
+**Example Output:**
 
 ```bash
 $ gitignore --verbose init python
-✓ Loading configuration from /home/user/.config/gitignore/config.conf
-✓ Found built-in template: python
-✓ Creating .gitignore
-✓ Added 15 patterns from python template
-✓ Backup created: backup_2024-01-10_14-30-00
-✓ Operation completed successfully
+[CONFIG] Loading configuration from /home/user/.config/gitignore/config.conf
+[TEMPLATE] Found built-in template: python (148 patterns)
+[BACKUP] Created backup: .gitignore.backup.2024-01-15_14-30-22
+[MERGE] Successfully merged 148 patterns
+[SUCCESS] Operation completed
 ```
 
-#### `quiet`
+#### `quiet` (boolean)
 
-Suppress non-essential output.
+**Description:** Suppress non-error output
 
-```conf
-quiet=false  # Default: show progress
-quiet=true   # Only show errors
+**Values:** `true`, `false` (default: `false`)
+
+**Configuration:**
+
+```ini
+quiet = true
 ```
 
-**Command-line override:** `--quiet` / `-q`
+**Command Override:** `--quiet`, `-q`
 
-**Example with quiet:**
+**Use Cases:**
 
-```bash
-$ gitignore --quiet init python
-# No output unless error occurs
+- Scripting and automation
+- CI/CD pipelines
+- Non-interactive environments
+
+#### `use_color` (boolean)
+
+**Description:** Enable ANSI color codes in output
+
+**Values:** `true` (default), `false`
+
+**Configuration:**
+
+```ini
+use_color = false
 ```
 
-#### `use_color`
+**Color Scheme:**
 
-Enable colored terminal output.
+- 🔴 **Red:** Errors and failures
+- 🟢 **Green:** Success confirmations
+- 🟡 **Yellow:** Warnings
+- 🔵 **Blue:** Information messages
+- 🟣 **Magenta:** Progress indicators
+- ⚪ **White:** Normal text
 
-```conf
-use_color=true   # Default: use colors
-use_color=false  # Plain text output
+**Environment Override:** `NO_COLOR=1` (disables colors)
+
+### Backup Management
+
+#### `auto_backup` (boolean)
+
+**Description:** Automatically create backups before modifying `.gitignore`
+
+**Values:** `true` (default), `false`
+
+**Configuration:**
+
+```ini
+auto_backup = true
 ```
 
-**Supported colors:**
+**Backup Details:**
 
-- 🔴 Red: Errors
-- 🟢 Green: Success
-- 🟡 Yellow: Warnings
-- 🔵 Blue: Info
-- 🟣 Magenta: Progress
+- **Location:** `~/.config/gitignore/backups/` (configurable)
+- **Naming:** `backup_YYYY-MM-DD_HH-MM-SS`
+- **Format:** Exact copy of original file
+- **Retention:** Manual cleanup required
 
-### Backup Settings
+#### `backup_dir` (string)
 
-#### `auto_backup`
+**Description:** Custom backup directory path
 
-Automatically backup `.gitignore` before modifications.
+**Default:** `~/.config/gitignore/backups`
 
-```conf
-auto_backup=true   # Default: create backups
-auto_backup=false  # Don't create backups
+**Configuration:**
+
+```ini
+backup_dir = /mnt/backup/gitignore
 ```
 
-**Backup location:** `~/.config/gitignore/backups/`
+**Requirements:**
 
-**Backup naming:** `backup_YYYY-MM-DD_HH-MM-SS`
+- Directory must exist and be writable
+- Relative paths resolved from config file location
 
-### Cache Settings
+### Cache Configuration
 
-#### `cache_enabled`
+#### `cache.enabled` (boolean)
 
-Enable caching of downloaded GitHub templates.
+**Description:** Enable caching of downloaded GitHub templates
 
-```conf
-cache_enabled=true   # Default: use cache
-cache_enabled=false  # Always download fresh
+**Values:** `true` (default), `false`
+
+**Configuration:**
+
+```ini
+[cache]
+enabled = true
 ```
 
-#### `cache_duration`
+**Benefits:**
 
-How long to cache GitHub templates (in seconds).
+- Faster subsequent sync operations
+- Reduced network usage
+- Offline capability for cached templates
 
-```conf
-cache_duration=86400  # Default: 24 hours
-cache_duration=3600   # 1 hour
-cache_duration=604800 # 1 week
+#### `cache.duration` (integer)
+
+**Description:** Cache lifetime in seconds
+
+**Default:** `86400` (24 hours)
+
+**Configuration:**
+
+```ini
+[cache]
+duration = 604800  # 1 week
 ```
 
-**Cache location:** `~/.config/gitignore/cache/`
+**Common Values:**
 
-### Default Templates
+- `3600` - 1 hour
+- `86400` - 24 hours (default)
+- `604800` - 1 week
+- `2592000` - 30 days
 
-#### `default_templates`
+#### `cache.dir` (string)
 
-Templates to apply by default (can specify multiple).
+**Description:** Cache storage directory
 
-```conf
-# Single template
-default_templates=python
+**Default:** `~/.config/gitignore/cache`
 
-# Multiple templates
-default_templates=python
-default_templates=vscode
-default_templates=linux
+**Configuration:**
+
+```ini
+[cache]
+dir = /tmp/gitignore-cache
 ```
 
-**Usage:** These templates are applied when no specific templates are requested.
+### Template Settings
+
+#### `templates.default` (string list)
+
+**Description:** Default templates to apply when none specified
+
+**Format:** Comma-separated list or multiple lines
+
+**Configuration:**
+
+```ini
+# Single line
+templates.default = python,vscode,linux
+
+# Or multiple entries
+templates.default = python
+templates.default = vscode
+templates.default = linux
+```
+
+**Use Cases:**
+
+- Personal project preferences
+- Team standards
+- Common technology stacks
+
+#### `templates.custom_dir` (string)
+
+**Description:** Directory for custom template storage
+
+**Default:** `~/.config/gitignore/templates`
+
+**Configuration:**
+
+```ini
+templates.custom_dir = ~/my-templates
+```
+
+**Template Priority:**
+
+1. Custom templates (highest priority)
+2. Built-in templates
+3. GitHub sync templates (if available)
+
+## 🔧 Advanced Configuration
+
+### Network Settings
+
+#### `network.timeout` (integer)
+
+**Description:** Network request timeout in seconds
+
+**Default:** `30`
+
+**Configuration:**
+
+```ini
+[network]
+timeout = 60
+```
+
+#### `network.retries` (integer)
+
+**Description:** Number of retry attempts for failed requests
+
+**Default:** `3`
+
+**Configuration:**
+
+```ini
+[network]
+retries = 5
+```
+
+#### `network.user_agent` (string)
+
+**Description:** HTTP User-Agent header for requests
+
+**Default:** `gitignore/2.0.0`
+
+**Configuration:**
+
+```ini
+[network]
+user_agent = MyApp/1.0 (gitignore fork)
+```
+
+### Performance Tuning
+
+#### `performance.max_concurrent` (integer)
+
+**Description:** Maximum concurrent network requests
+
+**Default:** `5`
+
+**Configuration:**
+
+```ini
+[performance]
+max_concurrent = 10
+```
+
+#### `performance.buffer_size` (integer)
+
+**Description:** Memory buffer size for file operations (KB)
+
+**Default:** `64`
+
+**Configuration:**
+
+```ini
+[performance]
+buffer_size = 128
+```
+
+### Development Settings
+
+#### `development.debug` (boolean)
+
+**Description:** Enable debug logging and assertions
+
+**Default:** `false`
+
+**Configuration:**
+
+```ini
+[development]
+debug = true
+```
+
+**Effects:**
+
+- Additional debug output
+- Runtime assertions enabled
+- Memory leak detection (if compiled with debug)
+
+#### `development.profile` (boolean)
+
+**Description:** Enable performance profiling
+
+**Default:** `false`
+
+**Configuration:**
+
+```ini
+[development]
+profile = true
+```
+
+### Security Settings
+
+#### `security.verify_ssl` (boolean)
+
+**Description:** Verify SSL certificates for HTTPS requests
+
+**Default:** `true`
+
+**Configuration:**
+
+```ini
+[security]
+verify_ssl = false  # Not recommended for production
+```
+
+#### `security.allowed_hosts` (string list)
+
+**Description:** Restrict network requests to specific hosts
+
+**Default:** Unrestricted
+
+**Configuration:**
+
+```ini
+[security]
+allowed_hosts = github.com,raw.githubusercontent.com
+```
 
 ## 🌐 Environment Variables
 
-### PREFIX
+### Core Environment Variables
 
-Installation prefix for custom installations.
+#### `GITIGNORE_CONFIG`
+
+**Description:** Override default configuration file path
+
+**Example:**
 
 ```bash
-# Install to custom location
-export PREFIX=~/.local
-make install
-
-# Or specify during install
-make PREFIX=/opt/gitignore install
+export GITIGNORE_CONFIG=/etc/gitignore.conf
+gitignore list
 ```
 
-### PATH
+#### `GITIGNORE_VERBOSE`
 
-Ensure gitignore is in executable path.
+**Description:** Force verbose output (equivalent to `--verbose`)
+
+**Example:**
 
 ```bash
-# Add to PATH
-export PATH="$HOME/.local/bin:$PATH"
+export GITIGNORE_VERBOSE=1
+gitignore init python
+```
 
-# Verify
-which gitignore
+#### `NO_COLOR`
+
+**Description:** Disable colored output (respects no-color.org standard)
+
+**Example:**
+
+```bash
+export NO_COLOR=1
+gitignore list
+```
+
+### Path and Directory Variables
+
+#### `XDG_CONFIG_HOME`
+
+**Description:** Override XDG base directory for configuration
+
+**Default:** `~/.config`
+
+**Example:**
+
+```bash
+export XDG_CONFIG_HOME=/mnt/config
+# Configuration loaded from /mnt/config/gitignore/config.conf
+```
+
+#### `XDG_CACHE_HOME`
+
+**Description:** Override XDG base directory for cache
+
+**Default:** `~/.cache`
+
+**Example:**
+
+```bash
+export XDG_CACHE_HOME=/tmp/cache
+# Cache stored in /tmp/cache/gitignore/
+```
+
+#### `TMPDIR`
+
+**Description:** Temporary directory for operations
+
+**Default:** System temporary directory
+
+**Example:**
+
+```bash
+export TMPDIR=/dev/shm
+gitignore sync python  # Uses shared memory for temp files
+```
+
+### Build and Installation Variables
+
+#### `PREFIX`
+
+**Description:** Installation prefix for custom builds
+
+**Example:**
+
+```bash
+export PREFIX=~/.local
+make install
+# Installs to ~/.local/bin/gitignore
+```
+
+#### `CC` / `CXX`
+
+**Description:** Override default compiler
+
+**Example:**
+
+```bash
+export CC=clang
+export CXX=clang++
+make
 ```
 
 ## 📂 Directory Structure
 
-### Configuration Directories
+### Complete Directory Layout
 
 ```
 ~/.config/gitignore/
-├── config.conf           # Main configuration
-├── templates/           # Custom templates
-│   └── mytemplate.gitignore
-├── cache/               # Downloaded templates
+├── config.conf              # Main configuration file
+├── templates/               # Custom templates directory
+│   ├── myproject.gitignore
+│   └── corporate.gitignore
+├── cache/                   # Downloaded template cache
 │   ├── python.gitignore
-│   └── node.gitignore
-└── backups/             # .gitignore backups
-    ├── backup_2024-01-10_14-30-00
-    └── backup_2024-01-10_15-45-12
+│   ├── node.gitignore
+│   └── timestamps.json
+├── backups/                 # Automatic backups
+│   ├── backup_2024-01-15_14-30-22
+│   └── backup_2024-01-10_09-15-33
+└── logs/                    # Debug logs (if enabled)
+    └── gitignore.log
 ```
 
-### Custom Templates Directory
+### Directory Permissions
 
-**Location:** `~/.config/gitignore/templates/`
-
-Create custom templates that override built-ins:
+**Recommended Permissions:**
 
 ```bash
-mkdir -p ~/.config/gitignore/templates
+# Configuration directory
+chmod 755 ~/.config/gitignore
 
-# Create custom Python template
-cat > ~/.config/gitignore/templates/python.gitignore << 'EOF'
-# My Custom Python Template
-*.pyc
-__pycache__/
-*.pyo
-.env
-venv/
-dist/
-build/
-EOF
+# Configuration file
+chmod 644 ~/.config/gitignore/config.conf
 
-# Use it
-gitignore init python  # Uses custom template
+# Templates directory
+chmod 755 ~/.config/gitignore/templates
+
+# Template files
+chmod 644 ~/.config/gitignore/templates/*.gitignore
+
+# Cache directory
+chmod 755 ~/.config/gitignore/cache
+
+# Backup directory
+chmod 755 ~/.config/gitignore/backups
 ```
 
-**Priority order:**
+### Custom Directory Configuration
 
-1. Custom templates (`~/.config/gitignore/templates/`)
-2. Built-in templates (compiled in binary)
+**All directories can be customized:**
 
-## 🔧 Advanced Configuration
-
-### Global Gitignore Setup
-
-Configure Git to use global gitignore:
-
-```bash
-# Create global gitignore
-gitignore global init
-
-# Configure Git
-git config --global core.excludesfile ~/.gitignore_global
+```ini
+[directories]
+config = ~/.config/gitignore
+cache = ~/.cache/gitignore
+backups = ~/.backups/gitignore
+templates = ~/my-templates
+logs = /var/log/gitignore
 ```
 
-### Project-Specific Configuration
+## 📋 Configuration Examples
 
-Create `.gitignore.local` for project-specific patterns:
+### Development Environment
 
-```bash
-# Create local config
-echo "local-config.txt" >> .gitignore.local
+```ini
+# Developer Configuration
+[general]
+verbose = true
+use_color = true
+quiet = false
 
-# Include in main .gitignore
-echo ".gitignore.local" >> .gitignore
+[backup]
+auto_backup = true
+
+[cache]
+enabled = true
+duration = 3600  # 1 hour for faster development
+
+[development]
+debug = true
+
+[templates]
+default = python,vscode,linux
 ```
 
-### CI/CD Configuration
+### Production Server
 
-For automated environments:
+```ini
+# Production Configuration
+[general]
+verbose = false
+use_color = false
+quiet = true
 
-```bash
-# Disable colors in CI
-export NO_COLOR=1
+[backup]
+auto_backup = true
 
-# Or set in config
-echo "use_color=false" >> ~/.config/gitignore/config.conf
+[cache]
+enabled = true
+duration = 604800  # 1 week
+
+[network]
+timeout = 60
+retries = 5
+
+[security]
+verify_ssl = true
 ```
 
-## 🔍 Configuration Validation
+### CI/CD Pipeline
 
-### Check Current Configuration
+```ini
+# CI/CD Configuration
+[general]
+verbose = false
+use_color = false
+quiet = true
 
-```bash
-# View loaded configuration
-gitignore --verbose --help
+[backup]
+auto_backup = false
 
-# Check config file syntax
-cat ~/.config/gitignore/config.conf
+[cache]
+enabled = true
+duration = 3600  # 1 hour
+
+[performance]
+max_concurrent = 10
+
+[development]
+debug = false
+profile = false
 ```
 
-### Reset to Defaults
+### Corporate Environment
 
-```bash
-# Remove config file
-rm ~/.config/gitignore/config.conf
+```ini
+# Corporate Configuration
+[general]
+verbose = false
+use_color = true
 
-# gitignore will use built-in defaults
+[backup]
+auto_backup = true
+
+[cache]
+enabled = true
+duration = 86400
+
+[templates]
+default = python,vscode,linux,corporate
+custom_dir = /etc/gitignore/templates
+
+[security]
+verify_ssl = true
+allowed_hosts = github.com,raw.githubusercontent.com,corporate.gitlab.com
 ```
 
-### Debug Configuration Loading
+### Minimal Configuration
+
+```ini
+# Minimal Configuration
+use_color = true
+auto_backup = true
+cache_enabled = true
+```
+
+### Power User Configuration
+
+```ini
+# Power User Configuration
+[general]
+verbose = true
+use_color = true
+
+[backup]
+auto_backup = true
+
+[cache]
+enabled = true
+duration = 2592000  # 30 days
+
+[network]
+timeout = 120
+retries = 10
+
+[performance]
+max_concurrent = 20
+buffer_size = 256
+
+[templates]
+default = python,node,rust,go,java,vscode,intellij,linux,macos,windows,docker,kubernetes,terraform
+
+[development]
+debug = true
+profile = true
+```
+
+## 🆘 Troubleshooting
+
+### Configuration Loading Issues
+
+#### Configuration Not Found
+
+**Symptoms:**
+
+```
+[WARNING] Configuration file not found, using defaults
+```
+
+**Solutions:**
 
 ```bash
-# Verbose mode shows config loading
-gitignore --verbose list
+# Check file existence
+ls -la ~/.config/gitignore/config.conf
+
+# Create directory structure
+mkdir -p ~/.config/gitignore
+
+# Check permissions
+touch ~/.config/gitignore/config.conf
+chmod 644 ~/.config/gitignore/config.conf
+```
+
+#### Invalid Configuration Syntax
+
+**Symptoms:**
+
+```
+[ERROR] Invalid configuration value for 'verbose': 'yes'
+[WARNING] Using default value: false
+```
+
+**Solutions:**
+
+```bash
+# Validate boolean values
+grep -E "verbose.*=" ~/.config/gitignore/config.conf
+# Should be: verbose = true  (not verbose=yes)
+
+# Check for syntax errors
+cat ~/.config/gitignore/config.conf | grep -n "="
+```
+
+#### Permission Denied
+
+**Symptoms:**
+
+```
+[ERROR] Cannot read configuration file: Permission denied
+```
+
+**Solutions:**
+
+```bash
+# Fix permissions
+chmod 644 ~/.config/gitignore/config.conf
+
+# Check parent directory permissions
+ls -ld ~/.config/gitignore/
+chmod 755 ~/.config/gitignore/
+```
+
+### Cache Issues
+
+#### Cache Not Working
+
+**Symptoms:**
+
+- Templates always download fresh
+- Cache directory empty
+
+**Solutions:**
+
+```bash
+# Check cache directory
+ls -la ~/.config/gitignore/cache/
+
+# Create cache directory
+mkdir -p ~/.config/gitignore/cache
+
+# Check configuration
+grep -A5 "\[cache\]" ~/.config/gitignore/config.conf
+```
+
+#### Stale Cache
+
+**Symptoms:**
+
+- Old templates still used after updates
+
+**Solutions:**
+
+```bash
+# Clear cache manually
+rm -rf ~/.config/gitignore/cache/*
+
+# Or use command
+gitignore cache clear  # (if implemented)
+
+# Check cache duration
+grep "cache_duration" ~/.config/gitignore/config.conf
+```
+
+### Template Issues
+
+#### Custom Templates Not Loading
+
+**Symptoms:**
+
+- Custom templates not appearing in `list`
+- Built-in templates used instead
+
+**Solutions:**
+
+```bash
+# Check custom template directory
+ls -la ~/.config/gitignore/templates/
+
+# Verify template files
+file ~/.config/gitignore/templates/*.gitignore
+
+# Check configuration
+grep "custom_dir" ~/.config/gitignore/config.conf
+```
+
+### Environment Variable Issues
+
+#### Variables Not Taking Effect
+
+**Symptoms:**
+
+- Environment variables ignored
+
+**Solutions:**
+
+```bash
+# Export before running
+export GITIGNORE_VERBOSE=1
+gitignore list
+
+# Check variable is set
+echo $GITIGNORE_VERBOSE
+
+# Use inline
+GITIGNORE_VERBOSE=1 gitignore list
+```
+
+### Performance Issues
+
+#### Slow Configuration Loading
+
+**Symptoms:**
+
+- Long startup times
+
+**Solutions:**
+
+```bash
+# Check configuration file size
+wc -l ~/.config/gitignore/config.conf
+
+# Simplify configuration
+# Remove unnecessary settings
 
 # Check file permissions
 ls -la ~/.config/gitignore/config.conf
 ```
 
-## 📋 Configuration Examples
+## 📚 Related Documentation
 
-### Developer Setup
-
-```conf
-# Developer configuration
-verbose=true
-use_color=true
-auto_backup=true
-cache_enabled=true
-cache_duration=86400
-
-default_templates=python
-default_templates=vscode
-default_templates=linux
-```
-
-### CI/CD Setup
-
-```conf
-# CI/CD configuration
-verbose=false
-quiet=true
-use_color=false
-auto_backup=false
-cache_enabled=true
-cache_duration=3600
-```
-
-### Minimal Setup
-
-```conf
-# Minimal configuration
-use_color=true
-auto_backup=true
-cache_enabled=true
-```
-
-### Power User Setup
-
-```conf
-# Power user configuration
-verbose=true
-use_color=true
-auto_backup=true
-cache_enabled=true
-cache_duration=604800
-
-default_templates=python
-default_templates=node
-default_templates=rust
-default_templates=go
-default_templates=vscode
-default_templates=intellij
-default_templates=linux
-default_templates=macos
-default_templates=windows
-```
-
-## 🆘 Troubleshooting
-
-### Configuration Not Loading
-
-**Symptoms:**
-
-- Settings not applied
-- Verbose mode shows "Loading default configuration"
-
-**Solutions:**
-
-```bash
-# Check file exists
-ls -la ~/.config/gitignore/config.conf
-
-# Check permissions
-chmod 644 ~/.config/gitignore/config.conf
-
-# Check syntax (no spaces around =)
-grep -n "=" ~/.config/gitignore/config.conf
-```
-
-### Invalid Configuration Values
-
-**Symptoms:**
-
-- Warnings about invalid values
-- Settings revert to defaults
-
-**Solutions:**
-
-```bash
-# Check boolean values (true/false)
-grep -E "(true|false)" ~/.config/gitignore/config.conf
-
-# Check numeric values
-grep -E "[0-9]+" ~/.config/gitignore/config.conf
-```
-
-### Cache Issues
-
-**Symptoms:**
-
-- Old templates still used
-- Cache not updating
-
-**Solutions:**
-
-```bash
-# Clear cache
-gitignore cache clear
-
-# Check cache directory
-ls -la ~/.config/gitignore/cache/
-
-# Disable cache temporarily
-echo "cache_enabled=false" >> ~/.config/gitignore/config.conf
-```
-
-## 📚 Related Topics
-
-- [Usage Guide](usage.md) - Command-line options
-- [Installation](installation.md) - Setting up gitignore
-- [Troubleshooting](troubleshooting.md) - Common issues
+- **[Installation Guide](installation.md)** - Initial setup and system requirements
+- **[Usage Guide](usage.md)** - Command-line usage and examples
+- **[API Reference](api-reference.md)** - Developer interface documentation
+- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
